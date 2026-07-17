@@ -1,4 +1,4 @@
-module Saveit.
+module Saveit
 
 go 1.24.1
 
