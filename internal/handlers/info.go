@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"Saveit./internal/formats"
-	"Saveit./internal/ytdlp"
-	"Saveit./utils"
+	"Saveit/internal/formats"
+	"Saveit/internal/ytdlp"
+	"Saveit/utils"
 )
 
 func (h *Handler) VideoInfo(w http.ResponseWriter, r *http.Request) {

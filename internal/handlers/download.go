@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"time"
 
-	"Saveit./internal/ytdlp"
-	"Saveit./utils"
+	"Saveit/internal/ytdlp"
+	"Saveit/utils"
 )
 
 var formatIDRegex = regexp.MustCompile(`^[a-zA-Z0-9+_-]+$`)

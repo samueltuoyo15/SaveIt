@@ -1,7 +1,7 @@
 services:
   app:
     build: .
-    container_name: saveit.-app
+    container_name: saveit-app
     ports:
       - "5000:5000"
     depends_on:
@@ -15,7 +15,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: saveit.-redis
+    container_name: saveit-redis
     ports:
       - "6379:6379"
     volumes:
