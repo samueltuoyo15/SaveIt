@@ -8,15 +8,15 @@ import (
 	"strconv"
 	"time"
 
-	"EverDownload/internal/cache"
-	"EverDownload/internal/handlers"
+	"Saveit./internal/cache"
+	"Saveit./internal/handlers"
 
 	"github.com/joho/godotenv"
 )
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	log.Printf("EverDownload starting on %d CPU cores", runtime.NumCPU())
+	log.Printf("Saveit. starting on %d CPU cores", runtime.NumCPU())
 
 	if os.Getenv("RAILWAY_ENVIRONMENT") == "" && os.Getenv("DOCKER_ENV") == "" {
 		_ = godotenv.Load()
@@ -56,6 +56,6 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 	}
 
-	log.Printf("EverDownload listening on :%s (GOMAXPROCS=%s)", port, strconv.Itoa(runtime.GOMAXPROCS(0)))
+	log.Printf("Saveit. listening on :%s (GOMAXPROCS=%s)", port, strconv.Itoa(runtime.GOMAXPROCS(0)))
 	log.Fatal(srv.ListenAndServe())
 }
