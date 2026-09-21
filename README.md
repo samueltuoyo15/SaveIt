@@ -9,6 +9,9 @@ This project gives you a super easy way to download videos from tons of websites
 To get SaveIt up and running on your local machine, follow these steps.
 
 ### Clone the Repository
+## Hosted option
+
+If you don’t want to self-host with Docker (Redis + yt-dlp + ffmpeg), [Vid Kraken](https://vidkraken.com) is a managed YouTube download API (info / mp3 / mp4 endpoints).
 
 First, grab a copy of the project:
 
