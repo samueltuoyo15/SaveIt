@@ -15,10 +15,14 @@ type Handler struct {
 
 	infoMu    sync.Mutex
 	infoCalls map[string]*infoCall
+	infoSlots chan struct{} // caps simultaneous yt-dlp info lookups (memory)
 }
 
-func New(c *cache.Cache, j *jobs.Manager) *Handler {
-	return &Handler{Cache: c, Jobs: j, infoCalls: map[string]*infoCall{}}
+func New(c *cache.Cache, j *jobs.Manager, maxInfo int) *Handler {
+	if maxInfo < 1 {
+		maxInfo = 1
+	}
+	return &Handler{Cache: c, Jobs: j, infoCalls: map[string]*infoCall{}, infoSlots: make(chan struct{}, maxInfo)}
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

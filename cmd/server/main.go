@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"Saveit/internal/cache"
@@ -36,9 +37,11 @@ func main() {
 	}
 	defer redisCache.Close()
 
+	maxDownloads, maxInfo := concurrencyLimits()
+
 	jobManager, err := jobs.NewManager(jobs.Config{
 		Dir:           envStr("DOWNLOAD_DIR", filepath.Join(os.TempDir(), "saveit")),
-		MaxConcurrent: envInt("MAX_CONCURRENT_DOWNLOADS", 2),
+		MaxConcurrent: maxDownloads,
 		JobTimeout:    time.Duration(envInt("DOWNLOAD_TIMEOUT_MIN", 45)) * time.Minute,
 		TTL:           time.Duration(envInt("DOWNLOAD_TTL_MIN", 30)) * time.Minute,
 		AbandonAfter:  2 * time.Minute,
@@ -49,7 +52,7 @@ func main() {
 
 	ytdlp.StartAutoUpdater(12 * time.Hour)
 
-	h := handlers.New(redisCache, jobManager)
+	h := handlers.New(redisCache, jobManager, maxInfo)
 	mux := http.NewServeMux()
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -103,4 +106,54 @@ func envInt(key string, def int) int {
 		return v
 	}
 	return def
+}
+
+// Each yt-dlp process (plus the Deno helper it runs for YouTube) peaks around
+// 180-200 MB. On Kubernetes hosts one out-of-memory kill takes down the whole
+// container, so size the limits from the container's memory unless set by env.
+const perProcessMB = 200
+
+func concurrencyLimits() (downloads, info int) {
+	limitMB := memoryLimitMB()
+	downloads, info = 2, 2
+	if limitMB > 0 {
+		budget := int((limitMB - 80) / perProcessMB)
+		if budget < 2 {
+			budget = 2
+			log.Printf("WARNING: only %d MB of memory; YouTube lookups need ~%d MB each. Use at least 512 MB.", limitMB, perProcessMB)
+		}
+		if budget > 12 {
+			budget = 12
+		}
+		info = budget / 3
+		if info < 1 {
+			info = 1
+		}
+		downloads = budget - info
+	}
+	downloads = envInt("MAX_CONCURRENT_DOWNLOADS", downloads)
+	info = envInt("MAX_CONCURRENT_INFO", info)
+	if limitMB > 0 {
+		log.Printf("memory limit %d MB -> %d downloads + %d lookups at once", limitMB, downloads, info)
+	} else {
+		log.Printf("memory limit unknown -> %d downloads + %d lookups at once", downloads, info)
+	}
+	return downloads, info
+}
+
+// memoryLimitMB reads the container's cgroup memory limit (v2, then v1).
+// Returns 0 when there is no limit or it can't be read.
+func memoryLimitMB() int64 {
+	for _, p := range []string{"/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"} {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		v, err := strconv.ParseInt(strings.TrimSpace(string(b)), 10, 64)
+		if err != nil || v <= 0 || v >= 1<<50 {
+			return 0 // "max" or effectively unlimited
+		}
+		return v / (1 << 20)
+	}
+	return 0
 }

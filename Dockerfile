@@ -27,6 +27,9 @@ COPY static ./static
 COPY templates ./templates
 COPY public ./public
 
+# Deno (used by yt-dlp for YouTube) otherwise grabs ~335 MB per call, which gets
+# the whole container OOM-killed on small plans. Capped it peaks around 150 MB.
+ENV DENO_V8_FLAGS=--max-old-space-size=96,--max-semi-space-size=4
 ENV DOCKER_ENV=true
 EXPOSE 5000
 ENTRYPOINT ["/sbin/tini", "--"]

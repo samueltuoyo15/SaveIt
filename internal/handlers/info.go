@@ -79,8 +79,16 @@ func (h *Handler) fetchInfoOnce(url string) ([]byte, error) {
 		close(c.done)
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 75*time.Second)
 	defer cancel()
+
+	select {
+	case h.infoSlots <- struct{}{}:
+		defer func() { <-h.infoSlots }()
+	case <-ctx.Done():
+		c.err = infoError("We're very busy right now. Please try again in a moment.")
+		return nil, c.err
+	}
 
 	raw, err := ytdlp.FetchInfo(ctx, url)
 	if err != nil {
