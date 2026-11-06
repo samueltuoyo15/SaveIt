@@ -81,7 +81,11 @@
                     </a>
                     <div class="dl-progress" id="dl-progress" hidden>
                         <div class="dl-bar"><div class="dl-bar-fill" id="dl-bar-fill"></div></div>
-                        <div class="dl-status" id="dl-status"></div>
+                        <div class="dl-status">
+                            <div class="dl-title" id="dl-title"></div>
+                            <div class="dl-detail" id="dl-detail"></div>
+                        </div>
+                        <button type="button" class="dl-cancel" id="dl-cancel" hidden onclick="cancelDownload()">Cancel</button>
                     </div>
                 </div>
             </div>
@@ -205,13 +209,14 @@
             const btn = document.getElementById('fetchBtn');
             btn.disabled = true;
             show('state-loading');
+            if (activeJobID) cancelDownload();
             resetDownloadUI();
 
             const ctrl = new AbortController();
             const timer = setTimeout(() => ctrl.abort(), 90000);
 
             try {
-                const res = await fetch('/api/info', {
+                const res = await fetchWithRetry('/api/info', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url }),
@@ -227,6 +232,7 @@
                 currentInfo = info;
                 renderResult(info, url);
                 show('state-result');
+                document.getElementById('state-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
             } catch (e) {
                 showError(e.name === 'AbortError'
                     ? 'This is taking too long. Please try again.'
@@ -234,6 +240,22 @@
             } finally {
                 clearTimeout(timer);
                 btn.disabled = false;
+            }
+        }
+
+        // Cloudflare/hosting proxies sometimes return a brief 502/503/504 that never
+        // reached our app (no JSON body). Those are safe to retry, so users don't see them.
+        async function fetchWithRetry(url, opts, retries = 2) {
+            for (let attempt = 0; ; attempt++) {
+                try {
+                    const res = await fetch(url, opts);
+                    const proxyError = [502, 503, 504, 520, 521, 522, 523, 524].includes(res.status)
+                        && !(res.headers.get('content-type') || '').includes('application/json');
+                    if (!proxyError || attempt >= retries) return res;
+                } catch (e) {
+                    if (e.name === 'AbortError' || attempt >= retries) throw e;
+                }
+                await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
             }
         }
 
@@ -412,10 +434,28 @@
         }
 
         document.querySelectorAll('#kind-toggle .seg-btn').forEach(b =>
-            b.addEventListener('click', () => { if (!activeJob) setKind(b.dataset.kind); }));
+            b.addEventListener('click', () => setKind(b.dataset.kind)));
+
+        let activeJobID = null;
+
+        function cancelDownload() {
+            const id = activeJobID;
+            resetDownloadUI();
+            setProgress(0, 'Download cancelled.', '');
+            document.getElementById('dl-progress').classList.add('cancelled');
+            if (id) fetch('/api/download/cancel?id=' + encodeURIComponent(id), { method: 'POST', keepalive: true }).catch(() => { });
+        }
+
+        // Leaving the page mid-download: tell the server so it stops wasting work.
+        window.addEventListener('pagehide', () => {
+            if (activeJob && activeJobID) navigator.sendBeacon('/api/download/cancel?id=' + encodeURIComponent(activeJobID));
+        });
 
         function resetDownloadUI() {
             activeJob = null;
+            activeJobID = null;
+            document.getElementById('dl-cancel').hidden = true;
+            document.getElementById('dl-progress').classList.remove('cancelled');
             const btn = document.getElementById('download-btn');
             btn.classList.remove('busy');
             document.getElementById('download-label').textContent = 'Download';
@@ -424,22 +464,35 @@
             document.getElementById('dl-bar-fill').style.width = '0%';
         }
 
-        function setProgress(pct, text) {
+        function setProgress(pct, title, detail) {
             document.getElementById('dl-progress').hidden = false;
             document.getElementById('dl-bar-fill').style.width = Math.max(2, Math.min(100, pct)) + '%';
-            document.getElementById('dl-status').textContent = text;
+            document.getElementById('dl-title').textContent = title;
+            document.getElementById('dl-detail').textContent = detail || '';
         }
 
-        function describe(job) {
-            if (job.status === 'queued') return 'Waiting for a free slot...';
-            if (job.phase === 'merging') return 'Merging video and audio...';
-            const parts = [];
-            if (job.part > 1) parts.push('Audio');
-            parts.push(Math.floor(job.progress) + '%');
-            if (job.total_bytes > 0) parts.push(formatBytes(job.downloaded_bytes) + ' / ' + formatBytes(job.total_bytes));
-            if (job.speed > 0) parts.push(formatBytes(job.speed) + '/s');
-            if (job.eta > 0) parts.push(job.eta + 's left');
-            return 'Preparing: ' + parts.join(' · ');
+        function formatETA(sec) {
+            if (!(sec > 0)) return '';
+            if (sec < 60) return 'less than a minute left';
+            const min = Math.round(sec / 60);
+            if (min < 60) return 'about ' + min + ' min left';
+            return 'about ' + Math.floor(min / 60) + ' h ' + (min % 60) + ' min left';
+        }
+
+        // The server fetches the file first, then the browser downloads it from us,
+        // so explain that instead of showing raw numbers.
+        function describe(job, merged) {
+            if (job.status === 'queued') return ['Waiting in line...', 'Other downloads are running. Yours starts shortly.'];
+            if (job.phase === 'merging') return ['Almost done...', 'Joining the video and sound together.'];
+            let title = 'Getting your file ready';
+            if (merged) title = job.part > 1 ? 'Getting the sound' : 'Getting the video';
+            title += ' · ' + Math.floor(job.progress || 0) + '%';
+            const bits = [];
+            if (job.total_bytes > 0) bits.push(formatBytes(job.downloaded_bytes) + ' of ' + formatBytes(job.total_bytes));
+            const eta = formatETA(job.eta);
+            if (eta) bits.push(eta);
+            const detail = (bits.length ? bits.join(' · ') + '. ' : '') + 'It will save to your device automatically.';
+            return [title, detail];
         }
 
         async function triggerDownload(e) {
@@ -452,19 +505,21 @@
             activeJob = myJob;
             btn.classList.add('busy');
             label.textContent = 'Preparing...';
-            setProgress(0, 'Starting...');
+            const merged = selectedFormatID.includes('+');
+            setProgress(0, 'Starting...', 'It will save to your device automatically.');
+            document.getElementById('dl-cancel').hidden = false;
 
             const fail = (msg) => {
                 if (activeJob !== myJob) return;
                 resetDownloadUI();
-                setProgress(0, msg);
+                setProgress(0, msg, '');
                 document.getElementById('dl-progress').classList.add('error');
             };
             document.getElementById('dl-progress').classList.remove('error');
 
             let job;
             try {
-                const res = await fetch('/api/download', {
+                const res = await fetchWithRetry('/api/download', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -475,6 +530,12 @@
                 });
                 if (!res.ok) return fail(await readError(res));
                 job = await res.json();
+                if (activeJob !== myJob) {
+                    // Cancelled while the start request was in flight.
+                    fetch('/api/download/cancel?id=' + encodeURIComponent(job.id), { method: 'POST', keepalive: true }).catch(() => { });
+                    return;
+                }
+                activeJobID = job.id;
             } catch (_) {
                 return fail('Network error. Make sure you are online and try again.');
             }
@@ -482,7 +543,9 @@
             let netErrors = 0;
             while (activeJob === myJob) {
                 if (job.status === 'done') {
-                    setProgress(100, 'Ready! Your download is starting.');
+                    setProgress(100, 'Done! Saving to your device.', 'Check your browser downloads.');
+                    document.getElementById('dl-cancel').hidden = true;
+                    activeJobID = null;
                     label.textContent = 'Download';
                     btn.classList.remove('busy');
                     activeJob = null;
@@ -491,8 +554,11 @@
                 }
                 if (job.status === 'failed') return fail(job.error || 'Download failed. Please try again.');
 
-                setProgress(job.progress || 0, describe(job));
+                const [t, d] = describe(job, merged);
+                setProgress(job.progress || 0, t, d);
+                label.textContent = 'Preparing ' + Math.floor(job.progress || 0) + '%';
                 await new Promise(r => setTimeout(r, 1000));
+                if (activeJob !== myJob) return;
                 try {
                     const res = await fetch('/api/download/status?id=' + encodeURIComponent(job.id));
                     if (!res.ok) {

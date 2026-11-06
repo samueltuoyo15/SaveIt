@@ -47,6 +47,21 @@ func (h *Handler) StartDownload(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusAccepted, job.Snapshot())
 }
 
+// CancelDownload: POST /api/download/cancel?id=... (also accepts sendBeacon).
+func (h *Handler) CancelDownload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	id := r.URL.Query().Get("id")
+	if !jobIDRegex.MatchString(id) {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	stopped := h.Jobs.Cancel(id)
+	writeJSON(w, http.StatusOK, map[string]bool{"stopped": stopped})
+}
+
 // DownloadStatus: GET /api/download/status?id=...
 func (h *Handler) DownloadStatus(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")

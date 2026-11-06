@@ -10,6 +10,7 @@ import (
 type rawFormat struct {
 	FormatID       string  `json:"format_id"`
 	Ext            string  `json:"ext"`
+	Protocol       string  `json:"protocol"`
 	Width          int     `json:"width"`
 	Height         int     `json:"height"`
 	Acodec         string  `json:"acodec"`
@@ -106,9 +107,18 @@ func codecRank(vcodec string) int {
 	}
 }
 
+// isStream reports HLS/DASH-manifest formats. YouTube lists these next to the
+// plain files, but they have no known size and advertise an inflated bitrate.
+func isStream(f rawFormat) bool {
+	return strings.HasPrefix(f.Protocol, "m3u8") || strings.Contains(f.Protocol, "dash")
+}
+
 func betterVideo(a, b rawFormat) bool {
 	if ra, rb := codecRank(a.Vcodec), codecRank(b.Vcodec); ra != rb {
 		return ra < rb
+	}
+	if sa, sb := isStream(a), isStream(b); sa != sb {
+		return sb
 	}
 	return a.TBR > b.TBR
 }
@@ -207,7 +217,9 @@ func ParseInfo(data []byte) (*VideoInfo, error) {
 				mergedID = f.FormatID + "+" + a.FormatID
 				vsz, _ := effectiveSize(f.Filesize, f.FilesizeApprox)
 				asz, _ := effectiveSize(a.Filesize, a.FilesizeApprox)
-				sz = vsz + asz
+				if vsz > 0 && asz > 0 {
+					sz = vsz + asz // unknown video size: show nothing rather than just the audio size
+				}
 				approx = f.FilesizeApprox > 0 || a.FilesizeApprox > 0
 				outExt = "mp4"
 				break

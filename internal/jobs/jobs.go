@@ -66,6 +66,7 @@ type Job struct {
 	errMsg   string
 	finished time.Time
 	seen     time.Time
+	users    int // clients waiting on this job; it is only cancelled when this hits 0
 }
 
 // Snapshot is the JSON shape returned to the client.
@@ -161,6 +162,7 @@ func (m *Manager) Start(videoURL, format, title string) *Job {
 		if reusable {
 			j.seen = time.Now()
 			j.title = title
+			j.users++
 		}
 		j.mu.Unlock()
 		if reusable {
@@ -171,7 +173,7 @@ func (m *Manager) Start(videoURL, format, title string) *Job {
 	ctx, cancel := context.WithTimeout(context.Background(), m.cfg.JobTimeout)
 	j := &Job{
 		ID: newID(), key: key, url: videoURL, format: format, title: title,
-		cancel: cancel, status: StatusQueued, seen: time.Now(),
+		cancel: cancel, status: StatusQueued, seen: time.Now(), users: 1,
 	}
 	m.byID[j.ID] = j
 	m.byK[key] = j
@@ -189,6 +191,28 @@ func (m *Manager) Get(id string) (*Job, bool) {
 	return j, ok
 }
 
+// Cancel withdraws one client's interest. The download only stops when no one
+// else is waiting on the same job (same url+format shared between users).
+func (m *Manager) Cancel(id string) bool {
+	m.mu.Lock()
+	j, ok := m.byID[id]
+	m.mu.Unlock()
+	if !ok {
+		return false
+	}
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.status != StatusQueued && j.status != StatusRunning {
+		return false
+	}
+	j.users--
+	if j.users <= 0 {
+		j.cancel()
+		return true
+	}
+	return false
+}
+
 func (m *Manager) run(ctx context.Context, j *Job) {
 	defer j.cancel()
 
@@ -196,7 +220,11 @@ func (m *Manager) run(ctx context.Context, j *Job) {
 	case m.sem <- struct{}{}:
 		defer func() { <-m.sem }()
 	case <-ctx.Done():
-		m.fail(j, errors.New("timed out waiting for a free download slot"))
+		if ctx.Err() == context.Canceled {
+			m.fail(j, errors.New("download was cancelled"))
+		} else {
+			m.fail(j, errors.New("timed out waiting for a free download slot"))
+		}
 		return
 	}
 
@@ -231,6 +259,7 @@ func (m *Manager) run(ctx context.Context, j *Job) {
 func (m *Manager) download(ctx context.Context, j *Job, prefix string) (string, error) {
 	args := ytdlp.DownloadArgs(j.url, j.format, prefix+".%(ext)s")
 	cmd := exec.CommandContext(ctx, "yt-dlp", args...)
+	killGroup(cmd)
 	cmd.WaitDelay = 5 * time.Second
 
 	pr, pw := io.Pipe()

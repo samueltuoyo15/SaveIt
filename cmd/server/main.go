@@ -71,6 +71,7 @@ func main() {
 	mux.HandleFunc("/api/info", h.VideoInfo)
 	mux.HandleFunc("/api/download", h.StartDownload)
 	mux.HandleFunc("/api/download/status", h.DownloadStatus)
+	mux.HandleFunc("/api/download/cancel", h.CancelDownload)
 	mux.HandleFunc("/download/file", h.DownloadFile)
 
 	port := os.Getenv("PORT")

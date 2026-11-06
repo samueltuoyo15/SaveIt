@@ -38,7 +38,7 @@ func (h *Handler) VideoInfo(w http.ResponseWriter, r *http.Request) {
 	// Only successful results are cached, so a failed fetch is retried next time.
 	// Bump the version whenever the response shape or format selection changes,
 	// so stale cached results are not served after a deploy.
-	cacheKey := "info:v3:" + req.URL
+	cacheKey := "info:v4:" + req.URL
 	if cached, ok := h.Cache.Get(cacheKey); ok {
 		w.Header().Set("X-Cache", "HIT")
 		w.Header().Set("Content-Type", "application/json")

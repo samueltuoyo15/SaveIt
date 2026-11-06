@@ -377,6 +377,7 @@ body {
 #state-result {
   display: none;
   margin-top: 40px;
+  scroll-margin-top: 16px;
 }
 
 .video-card {
@@ -771,4 +772,49 @@ body {
   .seg-btn {
     padding: 6px 12px;
   }
+}
+
+.dl-title {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.dl-detail {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.dl-progress.error .dl-title {
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+.dl-cancel {
+  display: block;
+  margin: 12px auto 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 22px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.dl-cancel:hover {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.dl-cancel[hidden] {
+  display: none;
+}
+
+.dl-progress.cancelled .dl-bar {
+  display: none;
 }
