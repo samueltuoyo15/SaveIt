@@ -7,6 +7,11 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    # Download settings (MAX_CONCURRENT_DOWNLOADS etc.). The app ignores the .env
+    # file inside Docker (DOCKER_ENV=true), so compose passes it in here.
+    env_file:
+      - path: .env
+        required: false
     environment:
       - REDIS_URL=redis://redis:6379
       - DOCKER_ENV=true

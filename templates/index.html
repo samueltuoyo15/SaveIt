@@ -61,7 +61,13 @@
                     <div class="video-author" id="video-author"></div>
 
                     <div class="format-section">
-                        <div class="format-label">Select Quality</div>
+                        <div class="format-head">
+                            <div class="format-label"><span class="hide-mobile">Select </span>Quality</div>
+                            <div class="seg-toggle" id="kind-toggle" role="tablist" aria-label="Format type">
+                                <button type="button" role="tab" class="seg-btn active" data-kind="video" aria-selected="true">Video</button>
+                                <button type="button" role="tab" class="seg-btn" data-kind="audio" aria-selected="false">Audio</button>
+                            </div>
+                        </div>
                         <div class="format-grid" id="format-grid"></div>
                     </div>
 
@@ -71,8 +77,12 @@
                             <path stroke-linecap="round" stroke-linejoin="round"
                                 d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4" />
                         </svg>
-                        Download
+                        <span id="download-label">Download</span>
                     </a>
+                    <div class="dl-progress" id="dl-progress" hidden>
+                        <div class="dl-bar"><div class="dl-bar-fill" id="dl-bar-fill"></div></div>
+                        <div class="dl-status" id="dl-status"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -195,18 +205,21 @@
             const btn = document.getElementById('fetchBtn');
             btn.disabled = true;
             show('state-loading');
+            resetDownloadUI();
+
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 90000);
 
             try {
                 const res = await fetch('/api/info', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url }),
+                    signal: ctrl.signal,
                 });
 
                 if (!res.ok) {
-                    const errText = await res.text();
-                    show('state-error');
-                    document.getElementById('state-error').textContent = 'Error: ' + (errText || 'Something went wrong. Check the URL and try again.');
+                    showError(await readError(res));
                     return;
                 }
 
@@ -215,11 +228,38 @@
                 renderResult(info, url);
                 show('state-result');
             } catch (e) {
-                show('state-error');
-                document.getElementById('state-error').textContent = 'Network error — make sure you are online.';
+                showError(e.name === 'AbortError'
+                    ? 'This is taking too long. Please try again.'
+                    : 'Network error. Make sure you are online and try again.');
             } finally {
+                clearTimeout(timer);
                 btn.disabled = false;
             }
+        }
+
+        function showError(msg) {
+            show('state-error');
+            document.getElementById('state-error').textContent = msg;
+        }
+
+        // Turns any failed response into a short human message. Proxy errors
+        // (Cloudflare 502/504/524 HTML pages) are never shown raw.
+        async function readError(res) {
+            const friendly = {
+                429: 'Too many requests. Please wait a moment and try again.',
+                502: 'Our server is busy right now. Please try again in a moment.',
+                503: 'Our server is busy right now. Please try again in a moment.',
+                504: 'The request timed out. Please try again.',
+                524: 'The request timed out. Please try again.',
+            };
+            const type = res.headers.get('content-type') || '';
+            if (type.includes('application/json')) {
+                try {
+                    const data = await res.json();
+                    if (data && data.error) return data.error;
+                } catch (_) { }
+            }
+            return friendly[res.status] || 'Something went wrong. Check the link and try again.';
         }
 
         function renderResult(info, originalURL) {
@@ -251,30 +291,83 @@
                 document.getElementById('source-badge').textContent = host;
             } catch (_) { }
 
+            const formats = info.formats || [];
+            const hasVideo = formats.some(f => f.has_video);
+            const hasAudio = formats.some(f => !f.has_video);
+            document.getElementById('kind-toggle').hidden = !(hasVideo && hasAudio);
+            setKind(hasVideo ? 'video' : 'audio');
+        }
+
+        let currentKind = 'video';
+
+        function setKind(kind) {
+            currentKind = kind;
+            // Plain-language names instead of jargon like "1080p" or "129 kbps".
+        function friendlyQuality(fmt) {
+            if (fmt.has_video) {
+                const h = fmt.height || 0;
+                let name = 'Video';
+                if (h >= 2160) name = '4K';
+                else if (h >= 1440) name = '2K';
+                else if (h >= 1080) name = 'Full HD';
+                else if (h >= 720) name = 'HD';
+                else if (h >= 480) name = 'Standard';
+                else if (h >= 360) name = 'Low';
+                else if (h > 0) name = 'Lowest';
+                return { name, hint: h > 0 ? h + 'p' : '' };
+            }
+            const m = /(\d+)k\)/.exec(fmt.label || '');
+            const kbps = m ? +m[1] : 0;
+            let name = 'Audio';
+            if (kbps >= 160) name = 'Best sound';
+            else if (kbps >= 112) name = 'High quality';
+            else if (kbps >= 80) name = 'Good quality';
+            else if (kbps > 0) name = 'Small file';
+            const ext = (fmt.ext || '').toLowerCase();
+            let hint = '';
+            if (ext === 'm4a' || ext === 'mp3') hint = 'Plays on any device';
+            else if (ext === 'webm' || ext === 'opus') hint = 'Best for Android & PC';
+            return { name, hint };
+        }
+
+        document.querySelectorAll('#kind-toggle .seg-btn').forEach(b => {
+                const on = b.dataset.kind === kind;
+                b.classList.toggle('active', on);
+                b.setAttribute('aria-selected', on);
+            });
+            renderFormats();
+            if (!activeJob) resetDownloadUI();
+        }
+
+        function renderFormats() {
             const grid = document.getElementById('format-grid');
             grid.innerHTML = '';
             selectedFormatID = null;
 
-            (info.formats || []).forEach((fmt, i) => {
+            const list = ((currentInfo && currentInfo.formats) || [])
+                .filter(f => currentKind === 'audio' ? !f.has_video : f.has_video);
+
+            list.forEach((fmt, i) => {
                 const el = document.createElement('label');
                 el.className = 'format-option' + (i === 0 ? ' selected' : '');
                 el.htmlFor = 'fmt-' + i;
 
-                const resText = fmt.height > 0 ? fmt.height + 'p' : 'Audio';
+                const q = friendlyQuality(fmt);
                 let sizeBadge = '';
                 if (fmt.filesize > 0) {
                     sizeBadge = `<span class="fmt-tag tag-size">${fmt.filesize_approx ? '~' : ''}${formatBytes(fmt.filesize)}</span>`;
                 }
-                const audioTag = !fmt.has_video ? `<span class="fmt-tag tag-audio">Audio only</span>` : '';
                 const ext = (fmt.ext || 'mp4').toUpperCase();
 
                 el.innerHTML = `
             <input type="radio" name="format" id="fmt-${i}" value="${escHtml(fmt.format_id)}" ${i === 0 ? 'checked' : ''}>
-            <span class="format-res">${resText}</span>
+            <span class="format-res">
+              <span class="format-name">${q.name}</span>
+              ${q.hint ? `<span class="format-hint">${q.hint}</span>` : ''}
+            </span>
             <span class="format-meta">
               <span class="fmt-tag tag-ext">${ext}</span>
               ${sizeBadge}
-              ${audioTag}
             </span>
           `;
 
@@ -282,6 +375,7 @@
                     document.querySelectorAll('.format-option').forEach(o => o.classList.remove('selected'));
                     el.classList.add('selected');
                     selectedFormatID = fmt.format_id;
+                    if (!activeJob) resetDownloadUI();
                 });
 
                 if (i === 0) selectedFormatID = fmt.format_id;
@@ -289,14 +383,130 @@
             });
         }
 
-        function triggerDownload(e) {
+        // Plain-language names instead of jargon like "1080p" or "129 kbps".
+        function friendlyQuality(fmt) {
+            if (fmt.has_video) {
+                const h = fmt.height || 0;
+                let name = 'Video';
+                if (h >= 2160) name = '4K';
+                else if (h >= 1440) name = '2K';
+                else if (h >= 1080) name = 'Full HD';
+                else if (h >= 720) name = 'HD';
+                else if (h >= 480) name = 'Standard';
+                else if (h >= 360) name = 'Low';
+                else if (h > 0) name = 'Lowest';
+                return { name, hint: h > 0 ? h + 'p' : '' };
+            }
+            const m = /(\d+)k\)/.exec(fmt.label || '');
+            const kbps = m ? +m[1] : 0;
+            let name = 'Audio';
+            if (kbps >= 160) name = 'Best sound';
+            else if (kbps >= 112) name = 'High quality';
+            else if (kbps >= 80) name = 'Good quality';
+            else if (kbps > 0) name = 'Small file';
+            const ext = (fmt.ext || '').toLowerCase();
+            let hint = '';
+            if (ext === 'm4a' || ext === 'mp3') hint = 'Plays on any device';
+            else if (ext === 'webm' || ext === 'opus') hint = 'Best for Android & PC';
+            return { name, hint };
+        }
+
+        document.querySelectorAll('#kind-toggle .seg-btn').forEach(b =>
+            b.addEventListener('click', () => { if (!activeJob) setKind(b.dataset.kind); }));
+
+        function resetDownloadUI() {
+            activeJob = null;
+            const btn = document.getElementById('download-btn');
+            btn.classList.remove('busy');
+            document.getElementById('download-label').textContent = 'Download';
+            document.getElementById('dl-progress').hidden = true;
+            document.getElementById('dl-progress').classList.remove('error');
+            document.getElementById('dl-bar-fill').style.width = '0%';
+        }
+
+        function setProgress(pct, text) {
+            document.getElementById('dl-progress').hidden = false;
+            document.getElementById('dl-bar-fill').style.width = Math.max(2, Math.min(100, pct)) + '%';
+            document.getElementById('dl-status').textContent = text;
+        }
+
+        function describe(job) {
+            if (job.status === 'queued') return 'Waiting for a free slot...';
+            if (job.phase === 'merging') return 'Merging video and audio...';
+            const parts = [];
+            if (job.part > 1) parts.push('Audio');
+            parts.push(Math.floor(job.progress) + '%');
+            if (job.total_bytes > 0) parts.push(formatBytes(job.downloaded_bytes) + ' / ' + formatBytes(job.total_bytes));
+            if (job.speed > 0) parts.push(formatBytes(job.speed) + '/s');
+            if (job.eta > 0) parts.push(job.eta + 's left');
+            return 'Preparing: ' + parts.join(' · ');
+        }
+
+        async function triggerDownload(e) {
             e.preventDefault();
-            if (!currentInfo || !selectedFormatID) return;
-            const title = (currentInfo.title || 'video').replace(/[/\\?%*:|"<>]/g, '-').substring(0, 120);
-            const url = '/download?url=' + encodeURIComponent(currentInfo.url || document.getElementById('urlInput').value.trim())
-                + '&format=' + encodeURIComponent(selectedFormatID)
-                + '&filename=' + encodeURIComponent(title + '.mp4');
-            window.location.href = url;
+            if (!currentInfo || !selectedFormatID || activeJob) return;
+
+            const btn = document.getElementById('download-btn');
+            const label = document.getElementById('download-label');
+            const myJob = {};
+            activeJob = myJob;
+            btn.classList.add('busy');
+            label.textContent = 'Preparing...';
+            setProgress(0, 'Starting...');
+
+            const fail = (msg) => {
+                if (activeJob !== myJob) return;
+                resetDownloadUI();
+                setProgress(0, msg);
+                document.getElementById('dl-progress').classList.add('error');
+            };
+            document.getElementById('dl-progress').classList.remove('error');
+
+            let job;
+            try {
+                const res = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: currentInfo.url || document.getElementById('urlInput').value.trim(),
+                        format: selectedFormatID,
+                        title: currentInfo.title || 'video',
+                    }),
+                });
+                if (!res.ok) return fail(await readError(res));
+                job = await res.json();
+            } catch (_) {
+                return fail('Network error. Make sure you are online and try again.');
+            }
+
+            let netErrors = 0;
+            while (activeJob === myJob) {
+                if (job.status === 'done') {
+                    setProgress(100, 'Ready! Your download is starting.');
+                    label.textContent = 'Download';
+                    btn.classList.remove('busy');
+                    activeJob = null;
+                    window.location.href = '/download/file?id=' + encodeURIComponent(job.id);
+                    return;
+                }
+                if (job.status === 'failed') return fail(job.error || 'Download failed. Please try again.');
+
+                setProgress(job.progress || 0, describe(job));
+                await new Promise(r => setTimeout(r, 1000));
+                try {
+                    const res = await fetch('/api/download/status?id=' + encodeURIComponent(job.id));
+                    if (!res.ok) {
+                        if (res.status === 404) return fail(await readError(res));
+                        if (++netErrors > 20) return fail(await readError(res));
+                        continue;
+                    }
+                    netErrors = 0;
+                    job = await res.json();
+                } catch (_) {
+                    // Brief network blips are fine; the job keeps running on the server.
+                    if (++netErrors > 20) return fail('Lost connection to the server. Please try again.');
+                }
+            }
         }
 
         function formatBytes(bytes) {

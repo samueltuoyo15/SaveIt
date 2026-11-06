@@ -220,6 +220,12 @@ A direct video stream (e.g., `video/mp4` content) which triggers a file download
 | `REDIS_URL` | `redis://localhost:6379` | The connection URL for the Redis server.             |
 | `PORT`      | `5000`              | The port on which the Go server will listen.         |
 | `DOCKER_ENV` | (not set)          | Set to `true` when running in Docker to prevent `.env` loading. |
+| `DOWNLOAD_DIR` | `$TMPDIR/saveit` | Where finished downloads are kept (use a disk path, not tmpfs). Wiped on startup. |
+| `MAX_CONCURRENT_DOWNLOADS` | `2` | yt-dlp processes allowed at once; extra jobs queue. Raise only with more RAM. |
+| `YTDLP_CONCURRENT_FRAGMENTS` | `4` | Parallel fragment downloads per job. |
+| `DOWNLOAD_TIMEOUT_MIN` | `45` | Hard limit for a single download job. |
+| `DOWNLOAD_TTL_MIN` | `30` | How long a finished file is kept so repeat downloads are instant. |
+| `YTDLP_AUTO_UPDATE` | `true` | Run `yt-dlp -U` on startup and every 12h. YouTube breaks old versions (HTTP 403) quickly. |
 
 ## Contributing
 

@@ -90,6 +90,43 @@ func fmtSize(bytes int64, approx bool) string {
 	}
 }
 
+// codecRank orders video codecs by how widely they play: H.264 works on
+// everything, VP9 on most devices, AV1 lacks hardware decoding on many phones.
+func codecRank(vcodec string) int {
+	v := strings.ToLower(vcodec)
+	switch {
+	case strings.HasPrefix(v, "avc"), strings.HasPrefix(v, "h264"):
+		return 0
+	case strings.HasPrefix(v, "vp9"), strings.HasPrefix(v, "vp09"):
+		return 1
+	case strings.HasPrefix(v, "av01"), strings.HasPrefix(v, "av1"):
+		return 2
+	default:
+		return 3
+	}
+}
+
+func betterVideo(a, b rawFormat) bool {
+	if ra, rb := codecRank(a.Vcodec), codecRank(b.Vcodec); ra != rb {
+		return ra < rb
+	}
+	return a.TBR > b.TBR
+}
+
+// isDRC reports YouTube's "dynamic range compression" tracks (IDs like
+// "140-drc"): loudness-squashed variants, so prefer the original audio.
+func isDRC(f rawFormat) bool { return strings.HasSuffix(f.FormatID, "-drc") }
+
+func betterAudio(a, b rawFormat) bool {
+	if da, db := isDRC(a), isDRC(b); da != db {
+		return db
+	}
+	if a.ABR != b.ABR {
+		return a.ABR > b.ABR
+	}
+	return a.TBR > b.TBR
+}
+
 func ParseInfo(data []byte) (*VideoInfo, error) {
 	var raw rawInfo
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -116,38 +153,49 @@ func ParseInfo(data []byte) (*VideoInfo, error) {
 	for _, a := range audioOnly {
 		fam := extFamily(a.Ext)
 		existing, ok := bestAudio[fam]
-		if !ok || a.ABR > existing.ABR || (a.ABR == existing.ABR && a.TBR > existing.TBR) {
+		if !ok || betterAudio(a, existing) {
 			bestAudio[fam] = a
 		}
 	}
 
-	seen := map[string]bool{}
-	var formats []Format
-
+	// One option per resolution. YouTube offers most heights in several codecs
+	// (H.264, VP9, AV1); listing them all just looks like duplicates to users.
+	type candidate struct {
+		f        rawFormat
+		combined bool
+	}
+	best := map[int]candidate{}
+	consider := func(f rawFormat, combined bool) {
+		if f.Height <= 0 {
+			return
+		}
+		if c, ok := best[f.Height]; !ok || betterVideo(f, c.f) {
+			best[f.Height] = candidate{f, combined}
+		}
+	}
 	for _, f := range combined {
-		key := fmt.Sprintf("%d:%s", f.Height, extFamily(f.Ext))
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		sz, approx := effectiveSize(f.Filesize, f.FilesizeApprox)
-		label := fmt.Sprintf("%dp %s", f.Height, strings.ToUpper(f.Ext))
-		if sz > 0 {
-			label += " " + fmtSize(sz, approx)
-		}
-		formats = append(formats, Format{
-			FormatID: f.FormatID, Label: label, Ext: f.Ext,
-			Height: f.Height, Filesize: sz, FilesizeApprox: approx,
-			HasVideo: true, HasAudio: true,
-		})
+		consider(f, true)
+	}
+	for _, f := range videoOnly {
+		consider(f, false)
 	}
 
-	for _, f := range videoOnly {
-		key := fmt.Sprintf("%d:%s", f.Height, extFamily(f.Ext))
-		if seen[key] {
+	var formats []Format
+	for _, c := range best {
+		f := c.f
+		if c.combined {
+			sz, approx := effectiveSize(f.Filesize, f.FilesizeApprox)
+			label := fmt.Sprintf("%dp %s", f.Height, strings.ToUpper(f.Ext))
+			if sz > 0 {
+				label += " " + fmtSize(sz, approx)
+			}
+			formats = append(formats, Format{
+				FormatID: f.FormatID, Label: label, Ext: f.Ext,
+				Height: f.Height, Filesize: sz, FilesizeApprox: approx,
+				HasVideo: true, HasAudio: true,
+			})
 			continue
 		}
-		seen[key] = true
 
 		mergedID := f.FormatID
 		outExt := f.Ext
@@ -202,7 +250,7 @@ func ParseInfo(data []byte) (*VideoInfo, error) {
 		added++
 	}
 
-	sort.Slice(formats, func(i, j int) bool {
+	sort.SliceStable(formats, func(i, j int) bool {
 		return formats[i].Height > formats[j].Height
 	})
 

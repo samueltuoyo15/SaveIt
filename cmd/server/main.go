@@ -4,12 +4,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"time"
 
 	"Saveit/internal/cache"
 	"Saveit/internal/handlers"
+	"Saveit/internal/jobs"
+	"Saveit/internal/ytdlp"
 
 	"github.com/joho/godotenv"
 )
@@ -33,7 +36,20 @@ func main() {
 	}
 	defer redisCache.Close()
 
-	h := handlers.New(redisCache)
+	jobManager, err := jobs.NewManager(jobs.Config{
+		Dir:           envStr("DOWNLOAD_DIR", filepath.Join(os.TempDir(), "saveit")),
+		MaxConcurrent: envInt("MAX_CONCURRENT_DOWNLOADS", 2),
+		JobTimeout:    time.Duration(envInt("DOWNLOAD_TIMEOUT_MIN", 45)) * time.Minute,
+		TTL:           time.Duration(envInt("DOWNLOAD_TTL_MIN", 30)) * time.Minute,
+		AbandonAfter:  2 * time.Minute,
+	})
+	if err != nil {
+		log.Fatalf("download dir setup failed: %v", err)
+	}
+
+	ytdlp.StartAutoUpdater(12 * time.Hour)
+
+	h := handlers.New(redisCache, jobManager)
 	mux := http.NewServeMux()
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -53,7 +69,9 @@ func main() {
 		http.ServeFile(w, r, "templates/index.html")
 	})
 	mux.HandleFunc("/api/info", h.VideoInfo)
-	mux.HandleFunc("/download", h.Download)
+	mux.HandleFunc("/api/download", h.StartDownload)
+	mux.HandleFunc("/api/download/status", h.DownloadStatus)
+	mux.HandleFunc("/download/file", h.DownloadFile)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -70,4 +88,18 @@ func main() {
 
 	log.Printf("Saveit listening on :%s (GOMAXPROCS=%s)", port, strconv.Itoa(runtime.GOMAXPROCS(0)))
 	log.Fatal(srv.ListenAndServe())
+}
+
+func envStr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+func envInt(key string, def int) int {
+	if v, err := strconv.Atoi(os.Getenv(key)); err == nil && v > 0 {
+		return v
+	}
+	return def
 }
