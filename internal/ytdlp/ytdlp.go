@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"log"
 	"os"
 	"os/exec"
 	"regexp"
@@ -110,8 +111,12 @@ func lastErrorLine(stderr string) string {
 	lines := strings.Split(strings.TrimSpace(stderr), "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
 		if strings.HasPrefix(lines[i], "ERROR:") {
+			log.Printf("[yt-dlp] %s", lines[i])
 			return CleanError(lines[i])
 		}
+	}
+	if len(lines) > 0 && lines[len(lines)-1] != "" {
+		log.Printf("[yt-dlp] failed without ERROR line: %s", lines[len(lines)-1])
 	}
 	return CleanError("")
 }

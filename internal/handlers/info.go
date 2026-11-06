@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -46,9 +47,13 @@ func (h *Handler) VideoInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.fetchInfoOnce(req.URL)
+	url := req.URL
+	resp, err := h.fetchInfoOnce(url)
 	if err != nil {
-		writeError(w, http.StatusBadGateway, err.Error())
+		// Not 502: proxies (Cloudflare, the host's gateway) treat 502 as "server down"
+		// and replace our message with their own error page.
+		log.Printf("[info] %s: %v", url, err)
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 	h.Cache.Set(cacheKey, resp, 30*time.Minute)
