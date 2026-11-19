@@ -59,6 +59,7 @@ Using SaveIt is straightforward:
       participant WebClient as "Web Client"
       participant GoBackend as "Go Backend (API)"
       participant YTDLP as "yt-dlp Process"
+      participant Proxy as "DataImpulse Residential Proxy"
       participant RedisCache as "Redis Cache"
 
       User->>WebClient: Pastes video URL
@@ -70,6 +71,10 @@ Using SaveIt is straightforward:
       else Cache Miss
         RedisCache-->>GoBackend: No cached info
         GoBackend->>YTDLP: Fetch video metadata
+        opt Proxy Configured (DATAIMPULSE_PROXY_URL)
+          YTDLP->>Proxy: Route query via residential IP (~30 KB)
+          Proxy-->>YTDLP: Return unblocked JSON metadata
+        end
         YTDLP-->>GoBackend: Raw metadata (JSON)
         GoBackend->>GoBackend: Parse and format info
         GoBackend->>RedisCache: Store formatted info
@@ -86,35 +91,45 @@ Using SaveIt is straightforward:
       participant WebClient as "Web Client"
       participant GoBackend as "Go Backend (API)"
       participant YTDLP as "yt-dlp Process"
+      participant CDN as "Media CDN (e.g. Meta / Google)"
 
       User->>WebClient: Selects format & clicks Download
-      WebClient->>GoBackend: GET /download (URL, format ID)
-      GoBackend->>YTDLP: Stream video with format ID
-      YTDLP-->>GoBackend: Stream video chunks
-      GoBackend-->>WebClient: Stream video chunks
+      WebClient->>GoBackend: POST /api/download (URL, format)
+      GoBackend->>YTDLP: Start background download job
+      Note over YTDLP,CDN: Direct unproxied stream (saves 99.9% proxy bandwidth)
+      YTDLP->>CDN: Fetch video chunks (50-200 MB)
+      CDN-->>YTDLP: Stream video data
+      YTDLP-->>GoBackend: Save output file
+      GoBackend-->>WebClient: Stream finished file via /download/file
       WebClient->>User: Downloads video file
     ```
 *   **Containerized Deployment**: With Docker and Docker Compose, setting up SaveIt is a breeze. It creates an isolated environment, making deployment simple and consistent across different systems.
 
 ## System Architecture / Design
 
-SaveIt employs a straightforward client-server architecture, powered by Go and leveraging external tools for media processing, with Redis for efficient caching.
+SaveIt employs a high-efficiency client-server architecture. It uses a **two-phase proxy strategy**: lightweight metadata lookups (~30 KB) route through residential proxies to defeat datacenter anti-bot filters, while heavy video streams (50-200 MB) download directly to conserve bandwidth.
 
 ```mermaid
 flowchart LR
     WebClient["Web Client (Browser)"]
     GoBackend["Go Backend (API Server)"]
-    YTDLPFFMPEG["yt-dlp / FFmpeg"]
     Redis[("Redis Cache")]
+    YTDLP["yt-dlp / FFmpeg"]
+    DataImpulse["DataImpulse Residential Proxy<br/>(Phase 1: Metadata ~30 KB)"]
+    DirectCDN["Direct Media CDN<br/>(Phase 2: Video Stream 50-200 MB)"]
 
-    WebClient -- "HTTP Requests (Info, Download)" --> GoBackend
+    WebClient -- "HTTP Requests" --> GoBackend
     GoBackend -- "Query / Store" --> Redis
-    GoBackend -- "Execute external commands" --> YTDLPFFMPEG
+    GoBackend -- "Spawns" --> YTDLP
+    YTDLP -- "Bypass anti-bot checks" --> DataImpulse
+    YTDLP -- "Direct download (unproxied)" --> DirectCDN
 
     style WebClient fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff
     style GoBackend fill:#2e1065,stroke:#8b5cf6,stroke-width:2px,color:#fff
-    style YTDLPFFMPEG fill:#220921,stroke:#d4036a,stroke-width:2px,color:#fff
     style Redis fill:#4c0519,stroke:#ef4444,stroke-width:2px,color:#fff
+    style YTDLP fill:#220921,stroke:#d4036a,stroke-width:2px,color:#fff
+    style DataImpulse fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
+    style DirectCDN fill:#1e293b,stroke:#94a3b8,stroke-width:2px,color:#fff
 ```
 
 ## Technologies Used
@@ -226,6 +241,9 @@ A direct video stream (e.g., `video/mp4` content) which triggers a file download
 | `DOWNLOAD_TIMEOUT_MIN` | `45` | Hard limit for a single download job. |
 | `DOWNLOAD_TTL_MIN` | `30` | How long a finished file is kept so repeat downloads are instant. |
 | `YTDLP_AUTO_UPDATE` | `true` | Run `yt-dlp -U` on startup and every 12h. YouTube breaks old versions (HTTP 403) quickly. |
+| `YTDLP_COOKIES_B64` | (not set) | Base64 of a YouTube `cookies.txt` (throwaway account). Fixes "Sign in to confirm you're not a bot" on server IPs. Or use `YTDLP_COOKIES_FILE` with a path. |
+| `DATAIMPULSE_PROXY_URL` | (not set) | Rotating residential proxy URL (e.g. DataImpulse) for metadata lookups. Bypasses datacenter anti-bot blocks without consuming proxy bandwidth on video streams. |
+| `YTDLP_PROXY_DOWNLOADS` | `false` | Optional boolean (`true`/`false`). Set to `true` to also route video file downloads through the proxy. |
 
 ## Contributing
 

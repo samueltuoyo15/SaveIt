@@ -12,8 +12,6 @@ import (
 	"strings"
 )
 
-const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
-
 // ProgressPrefix marks our machine-readable progress lines on yt-dlp's output.
 const ProgressPrefix = "SAVEIT_PROGRESS "
 
@@ -32,17 +30,37 @@ func concurrentFragments() string {
 }
 
 func commonArgs() []string {
-	return append(append([]string{}, jsRuntimeArgs()...),
+	args := append(append([]string{}, jsRuntimeArgs()...), cookieArgs()...)
+	return append(args,
 		"--no-playlist",
 		"--no-warnings",
-		"--user-agent", userAgent,
+		// No --user-agent override: yt-dlp sends the right one per YouTube client, and a
+		// stale fixed browser string (worse, mismatched with cookies) looks like a bot.
 		"--add-headers", "Accept-Language:en-US,en;q=0.9",
 		"--no-check-certificates",
 	)
 }
 
+func proxyArgs() []string {
+	if p := strings.TrimSpace(os.Getenv("DATAIMPULSE_PROXY_URL")); p != "" {
+		return []string{"--proxy", p}
+	}
+	if p := strings.TrimSpace(os.Getenv("YTDLP_PROXY_URL")); p != "" {
+		return []string{"--proxy", p}
+	}
+	return nil
+}
+
+func downloadProxyArgs() []string {
+	if strings.ToLower(strings.TrimSpace(os.Getenv("YTDLP_PROXY_DOWNLOADS"))) == "true" {
+		return proxyArgs()
+	}
+	return nil
+}
+
 func FetchInfo(ctx context.Context, videoURL string) ([]byte, error) {
 	args := append([]string{"-j", "--skip-download"}, commonArgs()...)
+	args = append(args, proxyArgs()...)
 	args = append(args, "--", videoURL)
 	cmd := exec.CommandContext(ctx, "yt-dlp", args...)
 	var stderr bytes.Buffer
@@ -76,6 +94,7 @@ func DownloadArgs(videoURL, formatID, outTemplate string) []string {
 		args = append(args, "--merge-output-format", "mp4")
 	}
 	args = append(args, commonArgs()...)
+	args = append(args, downloadProxyArgs()...)
 	return append(args, "--", videoURL)
 }
 
@@ -87,6 +106,8 @@ func CleanError(line string) string {
 	msg := strings.TrimSpace(errPrefix.ReplaceAllString(line, ""))
 	lower := strings.ToLower(msg)
 	switch {
+	case strings.Contains(lower, "no video formats found"):
+		return "No video was found at this link. It might be a photo post or image carousel."
 	case strings.Contains(lower, "sign in to confirm"), strings.Contains(lower, "not a bot"):
 		return "The site is blocking automated downloads right now. Please try again in a few minutes."
 	case strings.Contains(lower, "private"):

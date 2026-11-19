@@ -51,6 +51,7 @@ func main() {
 	}
 
 	ytdlp.StartAutoUpdater(12 * time.Hour)
+	ytdlp.InitCookies()
 
 	h := handlers.New(redisCache, jobManager, maxInfo)
 	mux := http.NewServeMux()
