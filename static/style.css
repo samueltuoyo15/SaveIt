@@ -782,75 +782,62 @@ body {
   background: transparent !important;
 }
 
-/* Custom Floating Tip Pill Button */
+/* Support link: no surface, no border, reads as text with a heartbeat icon */
 .tip-pill-btn {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: 22px;
+  left: 24px;
   z-index: 9999;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 16px 6px 6px;
-  background: rgba(18, 18, 18, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 100px;
-  color: #ffffff;
+  gap: 8px;
+  padding: 4px 2px;
+  background: none;
+  border: none;
+  color: var(--muted);
   font-family: inherit;
   font-size: 0.88rem;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  letter-spacing: -0.01em;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, background 0.2s ease;
   outline: none;
   user-select: none;
+  transition: color 0.2s ease;
 }
 
-.tip-pill-btn:hover {
-  background: rgba(28, 28, 30, 0.95);
-  border-color: rgba(255, 255, 255, 0.28);
-  transform: translateY(-2px);
+.tip-pill-btn:hover,
+.tip-pill-btn:focus-visible {
+  color: #ffffff;
 }
 
-.tip-pill-btn:active {
-  transform: translateY(0) scale(0.98);
+.tip-pill-btn:hover .tip-text,
+.tip-pill-btn:focus-visible .tip-text {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(220, 38, 38, 0.8);
 }
 
 .tip-icon-circle {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(220, 38, 38, 0.15);
-  border: 1px solid rgba(220, 38, 38, 0.35);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, border-color 0.2s ease;
-}
-
-.tip-pill-btn:hover .tip-icon-circle {
-  background: rgba(220, 38, 38, 0.28);
-  border-color: rgba(220, 38, 38, 0.65);
-  transform: scale(1.08) rotate(-6deg);
 }
 
 .tip-hand-icon {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
   color: #dc2626;
-  transition: color 0.2s ease;
+  animation: heartbeat 2.4s ease-in-out infinite;
 }
 
-.tip-pill-btn:hover .tip-hand-icon {
-  color: #ef4444;
+@keyframes heartbeat {
+  0%, 60%, 100% { transform: scale(1); }
+  70% { transform: scale(1.18); }
+  80% { transform: scale(1); }
+  90% { transform: scale(1.12); }
 }
 
 .tip-text {
-  color: #f4f4f5;
   white-space: nowrap;
 }
 
@@ -865,19 +852,8 @@ body {
 
   .tip-pill-btn {
     bottom: 16px;
-    right: 16px;
-    padding: 5px 13px 5px 5px;
+    left: 16px;
     font-size: 0.82rem;
-  }
-
-  .tip-icon-circle {
-    width: 24px;
-    height: 24px;
-  }
-
-  .tip-hand-icon {
-    width: 12px;
-    height: 12px;
   }
 }
 
