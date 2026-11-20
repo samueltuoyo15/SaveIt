@@ -150,10 +150,10 @@ body {
 .marquee-wrapper {
   width: 100vw;
   overflow: hidden;
-  background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding: 16px 0;
-  /* margin-top: auto; removed */
+  margin: 0 0 48px;
 }
 
 .marquee-track {
