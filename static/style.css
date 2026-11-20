@@ -870,16 +870,15 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 54px;
-  height: 54px;
-  vertical-align: -10px;
-  border-radius: 14px;
+  width: 64px;
+  height: 64px;
+  vertical-align: -13px;
+  border-radius: 17px;
   overflow: hidden;
   margin: 0 6px;
   border: 1.5px solid rgba(255, 255, 255, 0.22);
   background: #111113;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
   user-select: none;
 }
 
@@ -899,15 +898,26 @@ body {
 }
 
 .hero-sq:hover {
-  transform: scale(1.15) rotate(0deg);
-  border-color: rgba(239, 68, 68, 0.85);
-  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+  transform: scale(1.12) rotate(0deg);
+  border-color: rgba(220, 38, 38, 0.85);
   z-index: 2;
 }
 
 /* Hide default MyHappr widget button */
 #myhappr-floating-btn {
   display: none !important;
+}
+
+/* Force MyHappr Drawer Background Transparent */
+#myhappr-modal-box {
+  background-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#myhappr-modal-iframe {
+  background-color: transparent !important;
+  background: transparent !important;
 }
 
 /* Custom Floating Tip Pill Button */
@@ -931,8 +941,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   letter-spacing: -0.01em;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, background 0.2s ease;
   outline: none;
   user-select: none;
 }
@@ -941,7 +950,6 @@ body {
   background: rgba(28, 28, 30, 0.95);
   border-color: rgba(255, 255, 255, 0.28);
   transform: translateY(-2px);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
 }
 
 .tip-pill-btn:active {
@@ -952,8 +960,8 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.35);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -962,8 +970,8 @@ body {
 }
 
 .tip-pill-btn:hover .tip-icon-circle {
-  background: rgba(239, 68, 68, 0.25);
-  border-color: rgba(239, 68, 68, 0.6);
+  background: rgba(220, 38, 38, 0.28);
+  border-color: rgba(220, 38, 38, 0.65);
   transform: scale(1.08) rotate(-6deg);
 }
 
@@ -971,12 +979,12 @@ body {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  color: #ef4444;
+  color: #dc2626;
   transition: color 0.2s ease;
 }
 
 .tip-pill-btn:hover .tip-hand-icon {
-  color: #fca5a5;
+  color: #ef4444;
 }
 
 .tip-text {
@@ -986,11 +994,11 @@ body {
 
 @media (max-width: 600px) {
   .hero-sq {
-    width: 32px;
-    height: 32px;
-    border-radius: 9px;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
     margin: 0 4px;
-    vertical-align: -4px;
+    vertical-align: -6px;
   }
 
   .tip-pill-btn {
