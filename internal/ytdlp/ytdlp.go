@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ProgressPrefix marks our machine-readable progress lines on yt-dlp's output.
@@ -58,9 +59,18 @@ func downloadProxyArgs() []string {
 	return nil
 }
 
-func FetchInfo(ctx context.Context, videoURL string) ([]byte, error) {
-	args := append([]string{"-j", "--skip-download"}, commonArgs()...)
-	args = append(args, proxyArgs()...)
+func fetchInfoArgs() []string {
+	return append([]string{
+		"-j",
+		"--skip-download",
+		"--socket-timeout", "8",
+		"--retries", "1",
+		"--extractor-retries", "1",
+	}, commonArgs()...)
+}
+
+func execFetchInfo(ctx context.Context, videoURL string, proxy []string) ([]byte, error) {
+	args := append(fetchInfoArgs(), proxy...)
 	args = append(args, "--", videoURL)
 	cmd := exec.CommandContext(ctx, "yt-dlp", args...)
 	var stderr bytes.Buffer
@@ -73,6 +83,20 @@ func FetchInfo(ctx context.Context, videoURL string) ([]byte, error) {
 		return nil, errors.New(lastErrorLine(stderr.String()))
 	}
 	return out, nil
+}
+
+func FetchInfo(ctx context.Context, videoURL string) ([]byte, error) {
+	proxy := proxyArgs()
+	if len(proxy) > 0 {
+		directCtx, directCancel := context.WithTimeout(ctx, 8*time.Second)
+		out, err := execFetchInfo(directCtx, videoURL, nil)
+		directCancel()
+		if err == nil && len(out) > 0 {
+			return out, nil
+		}
+		log.Printf("[yt-dlp] direct info fetch failed (%v), falling back to proxy", err)
+	}
+	return execFetchInfo(ctx, videoURL, proxy)
 }
 
 // DownloadArgs builds the yt-dlp arguments for a background download job.

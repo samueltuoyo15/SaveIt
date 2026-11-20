@@ -47,7 +47,7 @@ body {
 
 .hero {
   width: 100%;
-  padding: 120px 20px 60px;
+  padding: 48px 20px 48px;
   text-align: center;
 }
 
@@ -786,16 +786,50 @@ body {
   background: transparent !important;
 }
 
-/* Support link: no surface, no border, reads as text with a heartbeat icon */
-.tip-pill-btn {
-  position: fixed;
-  bottom: 22px;
-  left: 24px;
-  z-index: 9999;
+/* Site Header */
+.site-header {
+  width: 100%;
+  max-width: 1040px;
+  padding: 24px 20px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 20;
+}
+
+.brand-link {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 2px;
+}
+
+.brand-link:hover {
+  opacity: 0.9;
+}
+
+/* Site Footer */
+.site-footer {
+  width: 100%;
+  max-width: 1040px;
+  padding: 24px 20px 48px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: auto;
+}
+
+/* Support link: ghost link with heartbeat icon */
+.tip-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
   background: none;
   border: none;
   color: var(--muted);
@@ -854,9 +888,15 @@ body {
     vertical-align: -6px;
   }
 
+  .site-header {
+    padding: 16px 16px 0;
+  }
+
+  .hero {
+    padding: 32px 16px 36px;
+  }
+
   .tip-pill-btn {
-    bottom: 16px;
-    left: 16px;
     font-size: 0.82rem;
   }
 }

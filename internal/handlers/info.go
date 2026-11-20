@@ -84,7 +84,7 @@ func (h *Handler) fetchInfoOnce(url string) ([]byte, error) {
 		close(c.done)
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 75*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
 	defer cancel()
 
 	select {
