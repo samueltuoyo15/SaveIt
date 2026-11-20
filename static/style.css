@@ -6,6 +6,10 @@
   padding: 0;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 :root {
   color-scheme: dark;
   --bg: #000000;
@@ -148,7 +152,7 @@ body {
 }
 
 .marquee-wrapper {
-  width: 100vw;
+  width: 100%;
   overflow: hidden;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
