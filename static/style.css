@@ -97,8 +97,8 @@ body {
 
 .decor-1 {
   bottom: -10px;
-  left: 2%;
-  max-width: 180px;
+  left: 1%;
+  max-width: 145px;
   animation-name: popDecor1;
   animation-delay: 0.1s;
 }
@@ -109,9 +109,9 @@ body {
 }
 
 .decor-2 {
-  top: 3%;
-  right: 1%;
-  max-width: 220px;
+  top: 1%;
+  right: 0.5%;
+  max-width: 170px;
   animation-name: popDecor2;
   animation-delay: 0.3s;
 }
@@ -122,9 +122,9 @@ body {
 }
 
 .decor-3 {
-  top: 40%;
-  left: -25px;
-  max-width: 160px;
+  top: 45%;
+  left: -35px;
+  max-width: 135px;
   animation-name: popDecor3;
   animation-delay: 0.5s;
 }
@@ -135,9 +135,9 @@ body {
 }
 
 .decor-4 {
-  bottom: 50px;
-  right: 4%;
-  max-width: 240px;
+  bottom: 40px;
+  right: 2%;
+  max-width: 190px;
   animation-name: popDecor4;
   animation-delay: 0.7s;
 }
@@ -148,9 +148,9 @@ body {
 }
 
 .decor-5 {
-  top: 8%;
-  left: 8%;
-  max-width: 150px;
+  top: 2%;
+  left: 1%;
+  max-width: 125px;
   animation-name: popDecor5;
   animation-delay: 0.9s;
 }
@@ -867,15 +867,15 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
-  vertical-align: middle;
-  border-radius: 15px;
+  width: 44px;
+  height: 44px;
+  vertical-align: -6px;
+  border-radius: 12px;
   overflow: hidden;
-  margin: 0 8px;
+  margin: 0 6px;
   border: 1.5px solid rgba(255, 255, 255, 0.22);
   background: #111113;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
   user-select: none;
 }
@@ -896,9 +896,9 @@ body {
 }
 
 .hero-sq:hover {
-  transform: scale(1.12) rotate(0deg);
+  transform: scale(1.15) rotate(0deg);
   border-color: rgba(239, 68, 68, 0.85);
-  box-shadow: 0 12px 30px rgba(239, 68, 68, 0.25);
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
   z-index: 2;
 }
 
@@ -916,7 +916,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 16px 8px 10px;
+  padding: 6px 16px 6px 6px;
   background: rgba(18, 18, 18, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -945,17 +945,35 @@ body {
   transform: translateY(0) scale(0.98);
 }
 
+.tip-icon-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, border-color 0.2s ease;
+}
+
+.tip-pill-btn:hover .tip-icon-circle {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.6);
+  transform: scale(1.08) rotate(-6deg);
+}
+
 .tip-hand-icon {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
   color: #ef4444;
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition: color 0.2s ease;
 }
 
 .tip-pill-btn:hover .tip-hand-icon {
-  transform: scale(1.15) rotate(-6deg);
-  color: #f87171;
+  color: #fca5a5;
 }
 
 .tip-text {
@@ -965,21 +983,28 @@ body {
 
 @media (max-width: 600px) {
   .hero-sq {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
     margin: 0 4px;
+    vertical-align: -4px;
   }
 
   .tip-pill-btn {
     bottom: 16px;
     right: 16px;
-    padding: 7px 14px 7px 9px;
+    padding: 5px 13px 5px 5px;
     font-size: 0.82rem;
   }
+
+  .tip-icon-circle {
+    width: 24px;
+    height: 24px;
+  }
+
   .tip-hand-icon {
-    width: 16px;
-    height: 16px;
+    width: 12px;
+    height: 12px;
   }
 }
 
