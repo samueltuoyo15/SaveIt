@@ -905,23 +905,17 @@ body {
   transform: translateY(0) scale(0.98);
 }
 
-.tip-orb {
+.tip-hand-icon {
   width: 18px;
   height: 18px;
-  border-radius: 50%;
   flex-shrink: 0;
-  background: conic-gradient(from 180deg at 50% 50%, #9D5EFF 0deg, #ec4899 90deg, #f97316 180deg, #3b82f6 270deg, #9D5EFF 360deg);
-  box-shadow: 0 0 12px rgba(157, 94, 255, 0.5);
-  animation: rotate-orb 6s linear infinite;
+  color: #c084fc;
+  transition: transform 0.2s ease, color 0.2s ease;
 }
 
-@keyframes rotate-orb {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+.tip-pill-btn:hover .tip-hand-icon {
+  transform: scale(1.15) rotate(-6deg);
+  color: #d8b4fe;
 }
 
 .tip-text {
@@ -936,7 +930,7 @@ body {
     padding: 7px 14px 7px 9px;
     font-size: 0.82rem;
   }
-  .tip-orb {
+  .tip-hand-icon {
     width: 16px;
     height: 16px;
   }
