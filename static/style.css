@@ -818,3 +818,127 @@ body {
 .dl-progress.cancelled .dl-bar {
   display: none;
 }
+
+/* Hero Animated Word Rotator */
+.rotator-container {
+  display: inline-block;
+  position: relative;
+  vertical-align: bottom;
+  height: 1.15em;
+  overflow: hidden;
+  text-align: left;
+}
+
+.rotator-word {
+  display: block;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s ease;
+  will-change: transform, opacity;
+  white-space: nowrap;
+}
+
+.rotator-word.active {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.rotator-word.next {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateY(115%);
+  opacity: 0;
+}
+
+.rotator-word.leaving {
+  transform: translateY(-115%);
+  opacity: 0;
+}
+
+.rotator-word.entering {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Hide default MyHappr widget button */
+#myhappr-floating-btn {
+  display: none !important;
+}
+
+/* Custom Floating Tip Pill Button */
+.tip-pill-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 10px;
+  background: rgba(18, 18, 18, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 100px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+  user-select: none;
+}
+
+.tip-pill-btn:hover {
+  background: rgba(28, 28, 30, 0.95);
+  border-color: rgba(255, 255, 255, 0.28);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+}
+
+.tip-pill-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.tip-orb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: conic-gradient(from 180deg at 50% 50%, #9D5EFF 0deg, #ec4899 90deg, #f97316 180deg, #3b82f6 270deg, #9D5EFF 360deg);
+  box-shadow: 0 0 12px rgba(157, 94, 255, 0.5);
+  animation: rotate-orb 6s linear infinite;
+}
+
+@keyframes rotate-orb {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.tip-text {
+  color: #f4f4f5;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .tip-pill-btn {
+    bottom: 16px;
+    right: 16px;
+    padding: 7px 14px 7px 9px;
+    font-size: 0.82rem;
+  }
+  .tip-orb {
+    width: 16px;
+    height: 16px;
+  }
+}
+

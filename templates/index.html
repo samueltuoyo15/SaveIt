@@ -29,11 +29,11 @@
     </div>
 
     <header class="hero">
-        <h1>Download Any Video,<br />Anywhere.</h1>
-        <p>Paste a link from YouTube, TikTok, Instagram, Twitter, Reddit, Twitch, Vimeo and more, download in seconds.
+        <h1>Download Any <span class="rotator-container"><span class="rotator-word active">Video</span><span class="rotator-word next">Audio</span></span>,<br />Anywhere.</h1>
+        <p>Paste a link from YouTube, TikTok, Instagram, Twitter, Reddit, and 1,000+ sites. Download crisp video or extract audio in seconds.
         </p>
         <div class="input-wrap">
-            <input id="urlInput" type="url" placeholder="Paste a video URL here..." autocomplete="off"
+            <input id="urlInput" type="url" placeholder="Paste a link from any site..." autocomplete="off"
                 spellcheck="false" />
             <button class="btn-primary" id="fetchBtn" onclick="fetchInfo()">Get Formats</button>
         </div>
@@ -588,7 +588,71 @@
         document.getElementById('urlInput').addEventListener('keydown', e => {
             if (e.key === 'Enter') fetchInfo();
         });
+
+        // Word rotator animation (Video <-> Audio)
+        (function initRotator() {
+            const words = ['Video', 'Audio'];
+            let idx = 0;
+            const container = document.querySelector('.rotator-container');
+            if (!container) return;
+            const current = container.querySelector('.rotator-word.active');
+            const next = container.querySelector('.rotator-word.next');
+
+            setInterval(() => {
+                idx = (idx + 1) % words.length;
+                const nextWord = words[idx];
+
+                next.textContent = nextWord;
+                next.classList.remove('next');
+                next.classList.add('entering');
+
+                current.classList.remove('active');
+                current.classList.add('leaving');
+
+                setTimeout(() => {
+                    current.textContent = nextWord;
+                    current.className = 'rotator-word active';
+                    next.className = 'rotator-word next';
+                }, 500);
+            }, 2600);
+        })();
+
+        // Support widget custom button click handler
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('#tipBtn');
+            if (btn) {
+                const defaultBtn = document.getElementById('myhappr-floating-btn');
+                if (defaultBtn) defaultBtn.click();
+            }
+        });
     </script>
+
+    <!-- Custom Floating Tip Button -->
+    <button type="button" class="tip-pill-btn" id="tipBtn"
+        data-myhappr-username="samueltuoyo"
+        data-myhappr-color="#9D5EFF"
+        data-myhappr-button-color="#9D5EFF"
+        data-myhappr-text-color="#FFFFFF"
+        data-myhappr-radius="16px"
+        data-myhappr-text="Support WonderKids"
+        data-myhappr-theme="transparent"
+        data-myhappr-card-bg="#FFFFFF"
+        data-myhappr-card-text="#09090b"
+        aria-label="Support WonderKids">
+        <span class="tip-orb" aria-hidden="true"></span>
+        <span class="tip-text">Support WonderKids</span>
+    </button>
+
+    <script src="https://myhappr.com/widget.js"
+        data-username="samueltuoyo"
+        data-color="#9D5EFF"
+        data-button-color="#9D5EFF"
+        data-text-color="#FFFFFF"
+        data-radius="16px"
+        data-text="Support WonderKids"
+        data-theme="transparent"
+        data-card-bg="#FFFFFF"
+        data-card-text="#09090b"></script>
 </body>
 
 </html>
