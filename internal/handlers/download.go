@@ -39,7 +39,7 @@ func (h *Handler) StartDownload(w http.ResponseWriter, r *http.Request) {
 	clientIP := utils.ClientIP(r)
 	if req.URL == "" || !utils.ValidateURL(req.URL) {
 		log.Printf("[download] invalid or unsupported url=%s ip=%s", req.URL, clientIP)
-		writeError(w, http.StatusBadRequest, "We don't support this website yet. Try a link from YouTube, TikTok, Instagram, Twitter / X, Facebook, or LinkedIn!")
+		writeError(w, http.StatusBadRequest, utils.UnsupportedMessage(req.URL))
 		return
 	}
 	if !formatIDRegex.MatchString(req.Format) {

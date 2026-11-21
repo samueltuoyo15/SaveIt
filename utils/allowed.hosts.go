@@ -61,3 +61,59 @@ func ValidateURL(videoURL string) bool {
 	}
 	return false
 }
+
+// PlatformName extracts a human-friendly platform or domain name from a URL.
+func PlatformName(videoURL string) string {
+	parsed, err := url.ParseRequestURI(videoURL)
+	if err != nil {
+		return "this platform"
+	}
+	host := strings.ToLower(parsed.Hostname())
+	for _, p := range []string{"www.", "m.", "web.", "v.", "mobile."} {
+		host = strings.TrimPrefix(host, p)
+	}
+	if host == "" {
+		return "this platform"
+	}
+
+	known := map[string]string{
+		"reddit.com":     "Reddit",
+		"redd.it":        "Reddit",
+		"threads.net":    "Threads",
+		"vimeo.com":      "Vimeo",
+		"snapchat.com":   "Snapchat",
+		"rumble.com":     "Rumble",
+		"kick.com":       "Kick",
+		"bsky.app":       "Bluesky",
+		"bilibili.com":   "Bilibili",
+		"spotify.com":    "Spotify",
+		"soundcloud.com": "SoundCloud",
+		"dailymotion.com": "Dailymotion",
+	}
+	if name, ok := known[host]; ok {
+		return name
+	}
+	for domain, name := range known {
+		if strings.HasSuffix(host, "."+domain) {
+			return name
+		}
+	}
+
+	parts := strings.Split(host, ".")
+	if len(parts) >= 2 {
+		base := parts[len(parts)-2]
+		if len(base) > 0 {
+			return strings.ToUpper(base[:1]) + base[1:]
+		}
+	}
+	return host
+}
+
+// UnsupportedMessage returns a friendly error message customized with the platform name.
+func UnsupportedMessage(videoURL string) string {
+	platform := PlatformName(videoURL)
+	if platform == "this platform" {
+		return "We don't support this platform downloads right now. Try YouTube, TikTok, Instagram, Twitter, etc."
+	}
+	return "We don't support " + platform + " downloads right now. Try YouTube, TikTok, Instagram, Twitter, etc."
+}

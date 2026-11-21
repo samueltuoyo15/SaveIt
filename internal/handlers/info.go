@@ -36,7 +36,7 @@ func (h *Handler) VideoInfo(w http.ResponseWriter, r *http.Request) {
 
 	if !utils.ValidateURL(req.URL) {
 		log.Printf("[info] unsupported or invalid url=%s ip=%s", req.URL, clientIP)
-		writeError(w, http.StatusBadRequest, "We don't support this website yet. Try a link from YouTube, TikTok, Instagram, Twitter / X, Facebook, or LinkedIn!")
+		writeError(w, http.StatusBadRequest, utils.UnsupportedMessage(req.URL))
 		return
 	}
 
