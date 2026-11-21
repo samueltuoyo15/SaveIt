@@ -42,8 +42,9 @@ func TestUnsupportedMessage(t *testing.T) {
 		{"https://v.redd.it/xyz", "We don't support Reddit downloads right now. Try YouTube, TikTok, Instagram, Twitter, etc."},
 		{"https://www.threads.net/@zuck/post/123", "We don't support Threads downloads right now. Try YouTube, TikTok, Instagram, Twitter, etc."},
 		{"https://vimeo.com/12345", "We don't support Vimeo downloads right now. Try YouTube, TikTok, Instagram, Twitter, etc."},
-		{"https://dailymotion.com/video/123", "We don't support Dailymotion downloads right now. Try YouTube, TikTok, Instagram, Twitter, etc."},
-		{"not-a-url", "We don't support this platform downloads right now. Try YouTube, TikTok, Instagram, Twitter, etc."},
+		{"not-a-url", "This is not a valid URL. Please paste a video link."},
+		{"", "This is not a valid URL. Please paste a video link."},
+		{"funny cats playing", "This is not a valid URL. Please paste a video link."},
 	}
 
 	for _, tt := range tests {

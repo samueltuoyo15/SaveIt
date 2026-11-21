@@ -251,7 +251,7 @@
                 if (url.includes('.')) {
                     url = 'https://' + url;
                 } else {
-                    showError("Please paste a full video link (like https://...)");
+                    showError("This is not a valid URL. Please paste a video link.");
                     return;
                 }
             }
@@ -259,7 +259,7 @@
             try {
                 new URL(url);
             } catch (e) {
-                showError("Please check the link and try again.");
+                showError("This is not a valid URL. Please paste a video link.");
                 return;
             }
 
