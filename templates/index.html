@@ -20,7 +20,38 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
         rel="stylesheet" />
     <link rel="icon" type="image/png" href="/static/animate5.png" />
-    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/style.css?v=2" />
+    <style>
+        .input-inner {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+        }
+        .btn-clear {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            color: #a1a1aa;
+            cursor: pointer;
+            padding: 0;
+            margin: 0 10px 0 6px;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+        .btn-clear:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+        .btn-clear[hidden] {
+            display: none !important;
+        }
+    </style>
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
 </head>
 

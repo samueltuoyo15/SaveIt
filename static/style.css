@@ -134,7 +134,7 @@ body {
 }
 
 .btn-clear[hidden] {
-  display: none;
+  display: none !important;
 }
 
 .btn-primary {
