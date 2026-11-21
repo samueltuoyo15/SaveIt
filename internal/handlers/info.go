@@ -31,7 +31,11 @@ func (h *Handler) VideoInfo(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	clientIP := utils.ClientIP(r)
+	log.Printf("[info] request url=%s ip=%s", req.URL, clientIP)
+
 	if !utils.ValidateURL(req.URL) {
+		log.Printf("[info] unsupported or invalid url=%s ip=%s", req.URL, clientIP)
 		writeError(w, http.StatusBadRequest, "This site isn't supported, or the link is invalid.")
 		return
 	}
@@ -39,8 +43,9 @@ func (h *Handler) VideoInfo(w http.ResponseWriter, r *http.Request) {
 	// Only successful results are cached, so a failed fetch is retried next time.
 	// Bump the version whenever the response shape or format selection changes,
 	// so stale cached results are not served after a deploy.
-	cacheKey := "info:v4:" + req.URL
+	cacheKey := "info:v5:" + req.URL
 	if cached, ok := h.Cache.Get(cacheKey); ok {
+		log.Printf("[info] cache hit url=%s ip=%s", req.URL, clientIP)
 		w.Header().Set("X-Cache", "HIT")
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(cached)
@@ -48,14 +53,16 @@ func (h *Handler) VideoInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := req.URL
+	start := time.Now()
 	resp, err := h.fetchInfoOnce(url)
 	if err != nil {
 		// Not 502: proxies (Cloudflare, the host's gateway) treat 502 as "server down"
 		// and replace our message with their own error page.
-		log.Printf("[info] %s: %v", url, err)
+		log.Printf("[info] fetch failed url=%s: %v (took %v) ip=%s", url, err, time.Since(start).Round(time.Millisecond), clientIP)
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
+	log.Printf("[info] fetch success url=%s (took %v) ip=%s", url, time.Since(start).Round(time.Millisecond), clientIP)
 	h.Cache.Set(cacheKey, resp, 30*time.Minute)
 
 	w.Header().Set("X-Cache", "MISS")

@@ -232,6 +232,7 @@ func (m *Manager) run(ctx context.Context, j *Job) {
 	j.status = StatusRunning
 	j.phase = "downloading"
 	j.mu.Unlock()
+	log.Printf("[jobs] %s starting download url=%s format=%s", j.ID, j.url, j.format)
 
 	prefix := filepath.Join(m.cfg.Dir, j.ID)
 	path, err := m.download(ctx, j, prefix)
@@ -246,6 +247,8 @@ func (m *Manager) run(ctx context.Context, j *Job) {
 		m.fail(j, err)
 		return
 	}
+
+	log.Printf("[jobs] %s finished download url=%s size=%d", j.ID, j.url, st.Size())
 
 	j.mu.Lock()
 	j.status = StatusDone

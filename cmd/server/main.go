@@ -14,6 +14,7 @@ import (
 	"Saveit/internal/handlers"
 	"Saveit/internal/jobs"
 	"Saveit/internal/ytdlp"
+	"Saveit/utils"
 
 	"github.com/joho/godotenv"
 )
@@ -85,7 +86,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           mux,
+		Handler:           requestLogger(mux),
 		ReadHeaderTimeout: 30 * time.Second,
 		WriteTimeout:      0,
 		IdleTimeout:       120 * time.Second,
@@ -158,3 +159,30 @@ func memoryLimitMB() int64 {
 	}
 	return 0
 }
+
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *statusWriter) WriteHeader(status int) {
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(sw, r)
+
+		if strings.HasPrefix(r.URL.Path, "/static/") || strings.HasPrefix(r.URL.Path, "/public/") {
+			return
+		}
+
+		ip := utils.ClientIP(r)
+		duration := time.Since(start).Round(time.Millisecond)
+		log.Printf("[http] %s %s status=%d took=%s ip=%s", r.Method, r.URL.Path, sw.status, duration, ip)
+	})
+}
+

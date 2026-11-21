@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"mime"
 	"net/http"
 	"net/url"
@@ -35,15 +36,19 @@ func (h *Handler) StartDownload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	clientIP := utils.ClientIP(r)
 	if req.URL == "" || !utils.ValidateURL(req.URL) {
+		log.Printf("[download] invalid or unsupported url=%s ip=%s", req.URL, clientIP)
 		writeError(w, http.StatusBadRequest, "missing or invalid url")
 		return
 	}
 	if !formatIDRegex.MatchString(req.Format) {
+		log.Printf("[download] invalid format=%s url=%s ip=%s", req.Format, req.URL, clientIP)
 		writeError(w, http.StatusBadRequest, "invalid format")
 		return
 	}
 	job := h.Jobs.Start(req.URL, req.Format, sanitizeTitle(req.Title))
+	log.Printf("[download] start job=%s url=%s format=%s title=%q ip=%s", job.ID, req.URL, req.Format, req.Title, clientIP)
 	writeJSON(w, http.StatusAccepted, job.Snapshot())
 }
 
@@ -118,6 +123,7 @@ func (h *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", contentDisposition(name))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "private, no-store")
+	log.Printf("[download] serving file job=%s name=%q size=%d ip=%s", id, name, st.Size(), utils.ClientIP(r))
 	http.ServeContent(w, r, "", st.ModTime(), f)
 }
 
