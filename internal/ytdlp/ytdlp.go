@@ -130,10 +130,12 @@ func CleanError(line string) string {
 	msg := strings.TrimSpace(errPrefix.ReplaceAllString(line, ""))
 	lower := strings.ToLower(msg)
 	switch {
-	case strings.Contains(lower, "no video formats found"):
-		return "No video was found at this link. It might be a photo post or image carousel."
-	case strings.Contains(lower, "sign in to confirm"), strings.Contains(lower, "not a bot"):
-		return "The site is blocking automated downloads right now. Please try again in a few minutes."
+	case strings.Contains(lower, "no video formats found"), strings.Contains(lower, "no video could be found"):
+		return "No video was found at this link. It might be a photo post, carousel, or text update."
+	case strings.Contains(lower, "sign in to confirm"), strings.Contains(lower, "not a bot"), strings.Contains(lower, "account authentication is required"), strings.Contains(lower, "login required"):
+		return "This platform requires account authentication or is blocking automated requests."
+	case strings.Contains(lower, "unsupported url"):
+		return "This link format is not supported or the post is private."
 	case strings.Contains(lower, "private"):
 		return "This video is private."
 	case strings.Contains(lower, "age-restricted"), strings.Contains(lower, "confirm your age"):
