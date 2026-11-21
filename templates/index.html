@@ -41,12 +41,20 @@
     </header>
 
     <header class="hero">
-        <h1>Download Any <span class="rotator-container"><span class="rotator-word active">Video</span><span class="rotator-word next">Audio</span></span> <span class="hero-sq hero-sq-1" title="Video"><img src="/static/sq-video.jpg" alt="" /></span><br />Anywhere <span class="hero-sq hero-sq-2" title="Audio"><img src="/static/sq-audio.jpg" alt="" /></span></h1>
+        <h1>Download Any <span class="rotator-container"><span class="rotator-word active">Video</span><span class="rotator-word next">Audio</span></span> <span class="hero-sq hero-sq-1"><img src="/static/sq-video.jpg" alt="" /></span><br />Anywhere <span class="hero-sq hero-sq-2"><img src="/static/sq-audio.jpg" alt="" /></span></h1>
         <p>Paste a link from YouTube, TikTok, Instagram, Twitter, Reddit, and 1,000+ sites. Download crisp video or extract audio in seconds.
         </p>
         <div class="input-wrap">
-            <input id="urlInput" type="url" placeholder="Paste a link from any site..." autocomplete="off"
-                spellcheck="false" />
+            <div class="input-inner">
+                <input id="urlInput" type="url" placeholder="Paste a link from any site..." autocomplete="off"
+                    spellcheck="false" />
+                <button type="button" class="btn-clear" id="clearBtn" aria-label="Clear input" hidden onclick="clearURL()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
             <button class="btn-primary" id="fetchBtn" onclick="fetchInfo()">Get Formats</button>
         </div>
     </header>
@@ -206,6 +214,7 @@
         async function fetchInfo() {
             let url = document.getElementById('urlInput').value.trim();
             if (!url) return;
+            updateClearBtn();
 
             if (!/^https?:\/\//i.test(url)) {
                 if (url.includes('.')) {
@@ -606,9 +615,31 @@
             return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
-        document.getElementById('urlInput').addEventListener('keydown', e => {
-            if (e.key === 'Enter') fetchInfo();
-        });
+        const urlInputEl = document.getElementById('urlInput');
+        const clearBtnEl = document.getElementById('clearBtn');
+
+        function updateClearBtn() {
+            if (clearBtnEl && urlInputEl) {
+                clearBtnEl.hidden = !urlInputEl.value.trim();
+            }
+        }
+
+        function clearURL() {
+            if (urlInputEl) {
+                urlInputEl.value = '';
+                updateClearBtn();
+                urlInputEl.focus();
+            }
+        }
+
+        if (urlInputEl) {
+            urlInputEl.addEventListener('input', updateClearBtn);
+            urlInputEl.addEventListener('change', updateClearBtn);
+            urlInputEl.addEventListener('paste', () => setTimeout(updateClearBtn, 50));
+            urlInputEl.addEventListener('keydown', e => {
+                if (e.key === 'Enter') fetchInfo();
+            });
+        }
 
         // Word rotator animation (Video <-> Audio)
         (function initRotator() {

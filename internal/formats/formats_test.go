@@ -71,3 +71,39 @@ func TestParseInfoOneOptionPerHeight(t *testing.T) {
 		t.Errorf("formats should be sorted highest first")
 	}
 }
+
+func TestCleanTitle(t *testing.T) {
+	tests := []struct {
+		title  string
+		author string
+		want   string
+	}{
+		{
+			title:  "288K views · 19K reactions | What each layer is actually doing ↓ 1️⃣ Raw This is just you talking. | Kienobi",
+			author: "Kienobi",
+			want:   "What each layer is actually doing",
+		},
+		{
+			title:  "Weekend side project: https://saveit.pxxl.pro | Samuel Tuoyo",
+			author: "Samuel Tuoyo",
+			want:   "Weekend side project: https://saveit.pxxl.pro",
+		},
+		{
+			title:  "Programming Legends Are at War Over AI",
+			author: "MeshPit",
+			want:   "Programming Legends Are at War Over AI",
+		},
+		{
+			title:  "",
+			author: "",
+			want:   "video",
+		},
+	}
+
+	for _, tt := range tests {
+		got := cleanTitle(tt.title, tt.author)
+		if got != tt.want {
+			t.Errorf("cleanTitle(%q, %q) = %q; want %q", tt.title, tt.author, got, tt.want)
+		}
+	}
+}

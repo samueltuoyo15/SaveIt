@@ -3,6 +3,7 @@ package formats
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -268,10 +269,64 @@ func ParseInfo(data []byte) (*VideoInfo, error) {
 
 	return &VideoInfo{
 		ID:        raw.ID,
-		Title:     raw.Title,
+		Title:     cleanTitle(raw.Title, raw.Uploader),
 		Author:    raw.Uploader,
 		Thumbnail: raw.Thumbnail,
 		URL:       raw.WebpageURL,
 		Formats:   formats,
 	}, nil
+}
+
+var statsRegex = regexp.MustCompile(`(?i)^\s*[\d.,]+[kmb]?\s*(views?|reactions?|likes?|plays?|reposts?)\b`)
+
+func cleanTitle(title, author string) string {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return "video"
+	}
+
+	// Remove pipes like "stats | title | author"
+	if strings.Contains(title, " | ") {
+		parts := strings.Split(title, " | ")
+		// Drop leading stats part (e.g. "288K views · 19K reactions")
+		if len(parts) > 1 && statsRegex.MatchString(parts[0]) {
+			parts = parts[1:]
+		}
+		// Drop trailing author part if it matches the author/uploader
+		if len(parts) > 1 && author != "" && strings.EqualFold(strings.TrimSpace(parts[len(parts)-1]), strings.TrimSpace(author)) {
+			parts = parts[:len(parts)-1]
+		}
+		title = strings.TrimSpace(strings.Join(parts, " - "))
+	}
+
+	// Drop newline clutter: keep the first substantive line
+	if idx := strings.IndexAny(title, "\r\n"); idx >= 0 {
+		title = strings.TrimSpace(title[:idx])
+	}
+
+	// If post contains an intro arrow marker like " ↓" or " ⬇", take the headline before it
+	for _, marker := range []string{" ↓", " ⬇", " :", " - "} {
+		if idx := strings.Index(title, marker); idx >= 15 && idx <= 100 {
+			title = strings.TrimSpace(title[:idx])
+			break
+		}
+	}
+
+	// If title is a massive paragraph, truncate cleanly at word boundary
+	runes := []rune(title)
+	if len(runes) > 100 {
+		cutoff := 95
+		for i := cutoff; i > 40; i-- {
+			if runes[i] == ' ' || runes[i] == '.' || runes[i] == ',' {
+				cutoff = i
+				break
+			}
+		}
+		title = strings.TrimSpace(string(runes[:cutoff])) + "…"
+	}
+
+	if title == "" {
+		return "video"
+	}
+	return title
 }
