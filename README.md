@@ -51,7 +51,7 @@ Using SaveIt is straightforward:
 
 ## Features
 
-*   **Wide Platform Support**: SaveIt can download videos from over 1000 platforms, including popular sites like YouTube, TikTok, Instagram, Twitter, Reddit, and Twitch, by leveraging the power of `yt-dlp`.
+*   **Wide Platform Support**: SaveIt downloads videos from major platforms, including YouTube, TikTok, Instagram, Twitter / X, Facebook, LinkedIn, and Twitch, by leveraging the power of `yt-dlp`.
 *   **Video Format Selection**: After pasting a URL, the application quickly presents you with various video and audio quality options, allowing you to choose the exact format you need.
     ```mermaid
     sequenceDiagram
