@@ -251,8 +251,7 @@
                 if (url.includes('.')) {
                     url = 'https://' + url;
                 } else {
-                    show('state-error');
-                    document.getElementById('state-error').textContent = 'Please enter a valid video link (e.g. starting with https://)';
+                    showError("Please paste a full video link (like https://...)");
                     return;
                 }
             }
@@ -260,8 +259,7 @@
             try {
                 new URL(url);
             } catch (e) {
-                show('state-error');
-                document.getElementById('state-error').textContent = 'Please enter a valid video link';
+                showError("Please check the link and try again.");
                 return;
             }
 
