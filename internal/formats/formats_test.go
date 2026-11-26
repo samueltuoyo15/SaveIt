@@ -107,3 +107,58 @@ func TestCleanTitle(t *testing.T) {
 		}
 	}
 }
+
+func TestParseTwitterFormats(t *testing.T) {
+	// Twitter/X formats where vcodec and acodec are null on progressive MP4s
+	raw := map[string]any{
+		"id": "2124971768184233984", "title": "GeekPark video",
+		"formats": []map[string]any{
+			{"format_id": "hls-audio-32000-Audio", "ext": "mp4", "vcodec": "none", "acodec": nil, "protocol": "m3u8_native"},
+			{"format_id": "hls-audio-128000-Audio", "ext": "mp4", "vcodec": "none", "acodec": nil, "protocol": "m3u8_native", "abr": 128},
+			{"format_id": "http-632", "ext": "mp4", "height": 538, "vcodec": nil, "acodec": nil, "tbr": 632, "protocol": "https"},
+			{"format_id": "hls-256", "ext": "mp4", "height": 538, "vcodec": "avc1.4D401F", "acodec": "none", "tbr": 257, "protocol": "m3u8_native"},
+			{"format_id": "http-950", "ext": "mp4", "height": 808, "vcodec": nil, "acodec": nil, "tbr": 950, "protocol": "https"},
+			{"format_id": "hls-486", "ext": "mp4", "height": 808, "vcodec": "avc1.4D401F", "acodec": "none", "tbr": 486, "protocol": "m3u8_native"},
+			{"format_id": "http-2176", "ext": "mp4", "height": 1212, "vcodec": nil, "acodec": nil, "tbr": 2176, "protocol": "https"},
+			{"format_id": "hls-987", "ext": "mp4", "height": 1212, "vcodec": "avc1.640020", "acodec": "none", "tbr": 987, "protocol": "m3u8_native"},
+			{"format_id": "http-10368", "ext": "mp4", "height": 2222, "vcodec": nil, "acodec": nil, "tbr": 10368, "protocol": "https"},
+			{"format_id": "hls-5718", "ext": "mp4", "height": 2222, "vcodec": "avc1.640033", "acodec": "none", "tbr": 5719, "protocol": "m3u8_native"},
+		},
+	}
+	data, _ := json.Marshal(raw)
+	info, err := ParseInfo(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the progressive MP4 formats (with audio) are chosen over the video-only HLS streams
+	expected := map[int]string{
+		2222: "http-10368",
+		1212: "http-2176",
+		808:  "http-950",
+		538:  "http-632",
+	}
+
+	foundVideos := 0
+	for _, f := range info.Formats {
+		if !f.HasVideo {
+			continue
+		}
+		foundVideos++
+		expID, ok := expected[f.Height]
+		if !ok {
+			t.Errorf("unexpected height %d: %s", f.Height, f.FormatID)
+			continue
+		}
+		if f.FormatID != expID {
+			t.Errorf("height %d: got format %s, want %s", f.Height, f.FormatID, expID)
+		}
+		if !f.HasAudio {
+			t.Errorf("format %s at height %d should have audio", f.FormatID, f.Height)
+		}
+	}
+
+	if foundVideos != len(expected) {
+		t.Fatalf("expected %d video formats, got %d", len(expected), foundVideos)
+	}
+}

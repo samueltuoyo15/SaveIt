@@ -51,8 +51,34 @@ type VideoInfo struct {
 	Formats   []Format `json:"formats"`
 }
 
-func hasVideo(f rawFormat) bool { return f.Vcodec != "" && f.Vcodec != "none" }
-func hasAudio(f rawFormat) bool { return f.Acodec != "" && f.Acodec != "none" }
+func hasVideo(f rawFormat) bool {
+	if f.Vcodec == "none" {
+		return false
+	}
+	if f.Vcodec != "" {
+		return true
+	}
+	return f.Height > 0 || f.Width > 0
+}
+
+func hasAudio(f rawFormat) bool {
+	if f.Acodec == "none" {
+		return false
+	}
+	if f.Acodec != "" {
+		return true
+	}
+	// When acodec is not probed (null/empty):
+	// 1. Audio-only tracks without video dimensions
+	if (f.Vcodec == "none" || f.Height <= 0) && (strings.Contains(strings.ToLower(f.FormatID), "audio") || f.Ext == "m4a" || f.Ext == "mp3" || f.Ext == "opus") {
+		return true
+	}
+	// 2. Direct progressive http/https files with dimensions typically contain audio
+	if (f.Height > 0 || f.Width > 0) && !isStream(f) {
+		return true
+	}
+	return false
+}
 
 func extFamily(ext string) string {
 	switch ext {
@@ -94,7 +120,7 @@ func fmtSize(bytes int64, approx bool) string {
 
 // codecRank orders video codecs by how widely they play: H.264 works on
 // everything, VP9 on most devices, AV1 lacks hardware decoding on many phones.
-func codecRank(vcodec string) int {
+func codecRank(vcodec, ext string) int {
 	v := strings.ToLower(vcodec)
 	switch {
 	case strings.HasPrefix(v, "avc"), strings.HasPrefix(v, "h264"):
@@ -103,6 +129,8 @@ func codecRank(vcodec string) int {
 		return 1
 	case strings.HasPrefix(v, "av01"), strings.HasPrefix(v, "av1"):
 		return 2
+	case v == "" && ext == "mp4":
+		return 0
 	default:
 		return 3
 	}
@@ -115,11 +143,11 @@ func isStream(f rawFormat) bool {
 }
 
 func betterVideo(a, b rawFormat) bool {
-	if ra, rb := codecRank(a.Vcodec), codecRank(b.Vcodec); ra != rb {
-		return ra < rb
-	}
 	if sa, sb := isStream(a), isStream(b); sa != sb {
 		return sb
+	}
+	if ra, rb := codecRank(a.Vcodec, a.Ext), codecRank(b.Vcodec, b.Ext); ra != rb {
+		return ra < rb
 	}
 	return a.TBR > b.TBR
 }
@@ -180,9 +208,20 @@ func ParseInfo(data []byte) (*VideoInfo, error) {
 		if f.Height <= 0 {
 			return
 		}
-		if c, ok := best[f.Height]; !ok || betterVideo(f, c.f) {
-			best[f.Height] = candidate{f, combined}
+		if c, ok := best[f.Height]; ok {
+			// Do not allow video-only to replace combined format if no audio stream exists
+			if c.combined && !combined && len(bestAudio) == 0 {
+				return
+			}
+			if !c.combined && combined {
+				best[f.Height] = candidate{f, combined}
+				return
+			}
+			if !betterVideo(f, c.f) {
+				return
+			}
 		}
+		best[f.Height] = candidate{f, combined}
 	}
 	for _, f := range combined {
 		consider(f, true)
