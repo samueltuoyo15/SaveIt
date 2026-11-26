@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"Saveit/internal/gallerydl"
 )
 
 func TestParseInfoOneOptionPerHeight(t *testing.T) {
@@ -160,5 +162,40 @@ func TestParseTwitterFormats(t *testing.T) {
 
 	if foundVideos != len(expected) {
 		t.Fatalf("expected %d video formats, got %d", len(expected), foundVideos)
+	}
+}
+
+func TestParseGallery(t *testing.T) {
+	g := &gallerydl.GalleryInfo{
+		Title:     "Sunset photos",
+		Author:    "photographer",
+		Thumbnail: "https://example.com/p1.jpg",
+		URL:       "https://x.com/photo/123",
+		Photos: []gallerydl.PhotoItem{
+			{Index: 1, URL: "https://example.com/p1.jpg", Ext: "jpg", Width: 1920, Height: 1080},
+			{Index: 2, URL: "https://example.com/p2.jpg", Ext: "png", Width: 1920, Height: 1080},
+		},
+	}
+
+	info := ParseGallery(g)
+	if info == nil {
+		t.Fatal("expected non-nil VideoInfo")
+	}
+
+	if !info.IsGallery || info.PhotoCount != 2 {
+		t.Errorf("expected gallery with 2 photos, got IsGallery=%v, PhotoCount=%d", info.IsGallery, info.PhotoCount)
+	}
+
+	// Should have All Photos (ZIP) + 2 photos = 3 formats
+	if len(info.Formats) != 3 {
+		t.Fatalf("expected 3 formats, got %d", len(info.Formats))
+	}
+
+	if info.Formats[0].FormatID != "photo-all-zip" {
+		t.Errorf("first format should be photo-all-zip, got %s", info.Formats[0].FormatID)
+	}
+
+	if info.Formats[1].FormatID != "photo-1" || !info.Formats[1].HasPhoto {
+		t.Errorf("second format should be photo-1 with HasPhoto=true")
 	}
 }

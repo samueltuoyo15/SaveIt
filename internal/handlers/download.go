@@ -135,6 +135,11 @@ var mediaTypes = map[string]string{
 	".mkv":  "video/x-matroska",
 	".mp3":  "audio/mpeg",
 	".opus": "audio/ogg",
+	".jpg":  "image/jpeg",
+	".jpeg": "image/jpeg",
+	".png":  "image/png",
+	".webp": "image/webp",
+	".zip":  "application/zip",
 }
 
 func sanitizeTitle(t string) string {

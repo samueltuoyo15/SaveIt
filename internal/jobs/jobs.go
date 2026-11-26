@@ -26,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"Saveit/internal/gallerydl"
 	"Saveit/internal/ytdlp"
 )
 
@@ -260,6 +261,10 @@ func (m *Manager) run(ctx context.Context, j *Job) {
 }
 
 func (m *Manager) download(ctx context.Context, j *Job, prefix string) (string, error) {
+	if strings.HasPrefix(j.format, "photo-") {
+		return m.downloadPhoto(ctx, j, prefix)
+	}
+
 	args := ytdlp.DownloadArgs(j.url, j.format, prefix+".%(ext)s")
 	cmd := exec.CommandContext(ctx, "yt-dlp", args...)
 	killGroup(cmd)
@@ -309,6 +314,57 @@ func (m *Manager) download(ctx context.Context, j *Job, prefix string) (string, 
 	}
 
 	return findOutput(prefix)
+}
+
+func (m *Manager) downloadPhoto(ctx context.Context, j *Job, prefix string) (string, error) {
+	j.mu.Lock()
+	j.phase = "downloading"
+	j.dl = 1
+	j.total = 100
+	j.mu.Unlock()
+
+	if j.format == "photo-all-zip" {
+		photosDir := prefix + "_gallery"
+		files, err := gallerydl.DownloadAll(ctx, j.url, photosDir)
+		if err != nil {
+			_ = os.RemoveAll(photosDir)
+			return "", err
+		}
+		j.mu.Lock()
+		j.phase = "merging"
+		j.dl = 85
+		j.mu.Unlock()
+
+		zipPath := prefix + ".zip"
+		if err := gallerydl.CreateZip(zipPath, files); err != nil {
+			_ = os.RemoveAll(photosDir)
+			return "", fmt.Errorf("failed to package zip: %w", err)
+		}
+		_ = os.RemoveAll(photosDir)
+		return zipPath, nil
+	}
+
+	idxStr := strings.TrimPrefix(j.format, "photo-")
+	idx, err := strconv.Atoi(idxStr)
+	if err != nil || idx < 1 {
+		idx = 1
+	}
+
+	photoDir := prefix + "_single"
+	filePath, err := gallerydl.DownloadSingle(ctx, j.url, idx, photoDir)
+	if err != nil {
+		_ = os.RemoveAll(photoDir)
+		return "", err
+	}
+
+	ext := filepath.Ext(filePath)
+	finalPath := prefix + ext
+	if err := os.Rename(filePath, finalPath); err != nil {
+		_ = os.RemoveAll(photoDir)
+		return "", err
+	}
+	_ = os.RemoveAll(photoDir)
+	return finalPath, nil
 }
 
 // handleLine parses our custom progress template; returns true if consumed.

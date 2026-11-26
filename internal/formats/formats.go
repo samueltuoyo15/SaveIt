@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"Saveit/internal/gallerydl"
 )
 
 type rawFormat struct {
@@ -40,15 +42,19 @@ type Format struct {
 	FilesizeApprox bool   `json:"filesize_approx"`
 	HasVideo       bool   `json:"has_video"`
 	HasAudio       bool   `json:"has_audio"`
+	HasPhoto       bool   `json:"has_photo"`
+	PhotoURL       string `json:"photo_url,omitempty"`
 }
 
 type VideoInfo struct {
-	ID        string   `json:"id"`
-	Title     string   `json:"title"`
-	Author    string   `json:"author"`
-	Thumbnail string   `json:"thumbnail"`
-	URL       string   `json:"url"`
-	Formats   []Format `json:"formats"`
+	ID         string   `json:"id"`
+	Title      string   `json:"title"`
+	Author     string   `json:"author"`
+	Thumbnail  string   `json:"thumbnail"`
+	URL        string   `json:"url"`
+	Formats    []Format `json:"formats"`
+	IsGallery  bool     `json:"is_gallery,omitempty"`
+	PhotoCount int      `json:"photo_count,omitempty"`
 }
 
 func hasVideo(f rawFormat) bool {
@@ -368,4 +374,55 @@ func cleanTitle(title, author string) string {
 		return "video"
 	}
 	return title
+}
+
+// ParseGallery transforms gallerydl metadata into VideoInfo format options.
+func ParseGallery(g *gallerydl.GalleryInfo) *VideoInfo {
+	if g == nil || len(g.Photos) == 0 {
+		return nil
+	}
+	var formats []Format
+
+	// If there are multiple photos, offer All Photos (ZIP) as the first option
+	if len(g.Photos) > 1 {
+		formats = append(formats, Format{
+			FormatID: "photo-all-zip",
+			Label:    fmt.Sprintf("All Photos (ZIP · %d images)", len(g.Photos)),
+			Ext:      "zip",
+			HasPhoto: true,
+		})
+	}
+
+	for _, p := range g.Photos {
+		label := fmt.Sprintf("Photo %d", p.Index)
+		if p.Width > 0 && p.Height > 0 {
+			label += fmt.Sprintf(" (%dx%d)", p.Width, p.Height)
+		}
+		if p.Filesize > 0 {
+			label += " " + fmtSize(p.Filesize, false)
+		} else if p.Ext != "" {
+			label += " " + strings.ToUpper(p.Ext)
+		}
+
+		formats = append(formats, Format{
+			FormatID: fmt.Sprintf("photo-%d", p.Index),
+			Label:    label,
+			Ext:      p.Ext,
+			Height:   p.Height,
+			Filesize: p.Filesize,
+			HasPhoto: true,
+			PhotoURL: p.URL,
+		})
+	}
+
+	return &VideoInfo{
+		ID:         "gallery",
+		Title:      cleanTitle(g.Title, g.Author),
+		Author:     g.Author,
+		Thumbnail:  g.Thumbnail,
+		URL:        g.URL,
+		Formats:    formats,
+		IsGallery:  true,
+		PhotoCount: len(g.Photos),
+	}
 }

@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"Saveit/internal/formats"
+	"Saveit/internal/gallerydl"
 	"Saveit/internal/ytdlp"
 	"Saveit/utils"
 )
@@ -43,7 +45,7 @@ func (h *Handler) VideoInfo(w http.ResponseWriter, r *http.Request) {
 	// Only successful results are cached, so a failed fetch is retried next time.
 	// Bump the version whenever the response shape or format selection changes,
 	// so stale cached results are not served after a deploy.
-	cacheKey := "info:v5:" + req.URL
+	cacheKey := "info:v6:" + req.URL
 	if cached, ok := h.Cache.Get(cacheKey); ok {
 		log.Printf("[info] cache hit url=%s ip=%s", req.URL, clientIP)
 		w.Header().Set("X-Cache", "HIT")
@@ -71,7 +73,7 @@ func (h *Handler) VideoInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 // fetchInfoOnce collapses concurrent requests for the same URL into a single
-// yt-dlp process. The fetch is detached from any one request, so a user
+// worker process. The fetch is detached from any one request, so a user
 // refreshing doesn't kill the work another user is waiting on.
 func (h *Handler) fetchInfoOnce(url string) ([]byte, error) {
 	h.infoMu.Lock()
@@ -104,6 +106,14 @@ func (h *Handler) fetchInfoOnce(url string) ([]byte, error) {
 
 	raw, err := ytdlp.FetchInfo(ctx, url)
 	if err != nil {
+		if isNoVideoError(err) {
+			if gInfo, gErr := gallerydl.FetchPhotos(ctx, url); gErr == nil && gInfo != nil {
+				if vInfo := formats.ParseGallery(gInfo); vInfo != nil && len(vInfo.Formats) > 0 {
+					c.resp, c.err = json.Marshal(vInfo)
+					return c.resp, c.err
+				}
+			}
+		}
 		c.err = err
 		return nil, err
 	}
@@ -113,11 +123,29 @@ func (h *Handler) fetchInfoOnce(url string) ([]byte, error) {
 		return nil, c.err
 	}
 	if len(info.Formats) == 0 {
+		if gInfo, gErr := gallerydl.FetchPhotos(ctx, url); gErr == nil && gInfo != nil {
+			if vInfo := formats.ParseGallery(gInfo); vInfo != nil && len(vInfo.Formats) > 0 {
+				c.resp, c.err = json.Marshal(vInfo)
+				return c.resp, c.err
+			}
+		}
 		c.err = errNoFormats
 		return nil, c.err
 	}
 	c.resp, c.err = json.Marshal(info)
 	return c.resp, c.err
+}
+
+func isNoVideoError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "no video") ||
+		strings.Contains(msg, "photo post") ||
+		strings.Contains(msg, "carousel") ||
+		strings.Contains(msg, "not supported") ||
+		strings.Contains(msg, "could not process this video")
 }
 
 type infoError string
